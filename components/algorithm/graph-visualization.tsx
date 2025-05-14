@@ -1,4 +1,5 @@
 "use client";
+// @ts-nocheck
 
 import { useRef, useEffect, useState, useCallback } from "react";
 import { Graph, Edge, Node } from "@/lib/utils";

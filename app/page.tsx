@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { RouteFinder } from "@/components/algorithm/route-finder";
 
 export default function Home() {

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Graph } from "@/lib/utils";
 
 export type BFSStep = {

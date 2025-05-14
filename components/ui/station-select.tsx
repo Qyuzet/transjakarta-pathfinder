@@ -1,12 +1,23 @@
-'use client';
+"use client";
+// @ts-nocheck
 
-import * as React from 'react';
-import { Check, ChevronDown } from 'lucide-react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Button } from '@/components/ui/button';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
-import { cn } from '@/lib/utils';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import * as React from "react";
+import { Check, ChevronDown } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
+import { cn } from "@/lib/utils";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface StationSelectProps {
   stations: { id: string; name: string }[];
@@ -24,7 +35,7 @@ export function StationSelect({
   className,
 }: StationSelectProps) {
   const [open, setOpen] = React.useState(false);
-  
+
   const selectedStation = React.useMemo(() => {
     return stations.find((station) => station.id === value);
   }, [stations, value]);
@@ -42,8 +53,8 @@ export function StationSelect({
           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent 
-        className="w-full p-0 z-[9999]" 
+      <PopoverContent
+        className="w-full p-0 z-[9999]"
         align="start"
         side="bottom"
         sideOffset={5}

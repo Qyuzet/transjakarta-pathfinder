@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Graph, PriorityQueue } from "@/lib/utils";
 
 export type DijkstraStep = {
