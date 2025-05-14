@@ -111,7 +111,7 @@ export function AlgorithmMetrics({ result }: MetricsProps) {
                       padding: "4px 8px",
                     }}
                   />
-                  <Bar dataKey="value" nameKey="name" radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="value" radius={[2, 2, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
