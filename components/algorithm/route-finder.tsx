@@ -38,6 +38,7 @@ import { AnimatedAlgorithmSteps } from "@/components/algorithm/visualization";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { AlgorithmMetrics } from "@/components/algorithm/metrics";
+import { AlgorithmComparison } from "@/components/algorithm/comparison";
 
 import dynamic from "next/dynamic";
 
@@ -53,15 +54,27 @@ const InteractiveMap = dynamic(
 // Define a union type for algorithm results
 type AlgorithmResult = DijkstraResult | BFSResult;
 
+// Define a type for comparison results
+type ComparisonResult = {
+  dijkstra: DijkstraResult;
+  bfs: BFSResult;
+  timeDifference: number;
+  pathLengthDifference: number;
+  nodesExploredDifference: number;
+  isPathIdentical: boolean;
+};
+
 export function RouteFinder() {
   const [mounted, setMounted] = useState(false);
   const [startNodeId, setStartNodeId] = useState<string>("");
   const [endNodeId, setEndNodeId] = useState<string>("");
   const [result, setResult] = useState<AlgorithmResult | null>(null);
+  const [comparisonResult, setComparisonResult] =
+    useState<ComparisonResult | null>(null);
   const [activeTab, setActiveTab] = useState("map");
   const [isCalculating, setIsCalculating] = useState(false);
   const [selectedAlgorithm, setSelectedAlgorithm] = useState<
-    "dijkstra" | "bfs"
+    "dijkstra" | "bfs" | "compare"
   >("dijkstra");
 
   // Only render after component is mounted on client
@@ -75,16 +88,56 @@ export function RouteFinder() {
     if (!startNodeId || !endNodeId) return;
 
     setIsCalculating(true);
+    setComparisonResult(null);
 
     // Small timeout to allow UI to update and show loading state
     setTimeout(() => {
-      let result;
-      if (selectedAlgorithm === "dijkstra") {
-        result = dijkstra(transjakartaGraph, startNodeId, endNodeId);
+      if (selectedAlgorithm === "compare") {
+        // Run both algorithms and compare results
+        const dijkstraResult = dijkstra(
+          transjakartaGraph,
+          startNodeId,
+          endNodeId
+        );
+        const bfsResult = bfs(transjakartaGraph, startNodeId, endNodeId);
+
+        // Calculate comparison metrics
+        const timeDifference = dijkstraResult.distance - bfsResult.distance;
+        const pathLengthDifference =
+          dijkstraResult.path.length - bfsResult.path.length;
+        const nodesExploredDifference =
+          dijkstraResult.nodesExplored - bfsResult.nodesExplored;
+
+        // Check if paths are identical
+        const isPathIdentical =
+          dijkstraResult.path.length === bfsResult.path.length &&
+          dijkstraResult.path.every(
+            (nodeId, index) => nodeId === bfsResult.path[index]
+          );
+
+        // Create comparison result
+        const comparison: ComparisonResult = {
+          dijkstra: dijkstraResult,
+          bfs: bfsResult,
+          timeDifference,
+          pathLengthDifference,
+          nodesExploredDifference,
+          isPathIdentical,
+        };
+
+        setComparisonResult(comparison);
+        setResult(null); // Clear single algorithm result
       } else {
-        result = bfs(transjakartaGraph, startNodeId, endNodeId);
+        // Run single algorithm
+        let result;
+        if (selectedAlgorithm === "dijkstra") {
+          result = dijkstra(transjakartaGraph, startNodeId, endNodeId);
+        } else {
+          result = bfs(transjakartaGraph, startNodeId, endNodeId);
+        }
+        setResult(result);
+        setComparisonResult(null); // Clear comparison result
       }
-      setResult(result);
       setIsCalculating(false);
     }, 500);
   };
@@ -94,23 +147,54 @@ export function RouteFinder() {
   };
 
   const getRouteDetails = () => {
-    if (!result || !result.path.length) return null;
+    if (result && result.path.length) {
+      const totalStations = result.path.length;
+      const stationNames = result.path.map(
+        (id) => getStationById(id)?.name || id
+      );
+      const totalTimeMinutes = result.distance;
+      const startStation = getStationById(result.path[0]);
+      const endStation = getStationById(result.path[result.path.length - 1]);
 
-    const totalStations = result.path.length;
-    const stationNames = result.path.map(
-      (id) => getStationById(id)?.name || id
-    );
-    const totalTimeMinutes = result.distance;
-    const startStation = getStationById(result.path[0]);
-    const endStation = getStationById(result.path[result.path.length - 1]);
+      return {
+        totalStations,
+        stationNames,
+        totalTimeMinutes,
+        startStation,
+        endStation,
+        isComparison: false,
+      };
+    } else if (comparisonResult) {
+      // For comparison, we'll return details for both algorithms
+      const dijkstraPath = comparisonResult.dijkstra.path;
+      const bfsPath = comparisonResult.bfs.path;
 
-    return {
-      totalStations,
-      stationNames,
-      totalTimeMinutes,
-      startStation,
-      endStation,
-    };
+      return {
+        dijkstra: {
+          totalStations: dijkstraPath.length,
+          stationNames: dijkstraPath.map(
+            (id) => getStationById(id)?.name || id
+          ),
+          totalTimeMinutes: comparisonResult.dijkstra.distance,
+          startStation: getStationById(dijkstraPath[0]),
+          endStation: getStationById(dijkstraPath[dijkstraPath.length - 1]),
+        },
+        bfs: {
+          totalStations: bfsPath.length,
+          stationNames: bfsPath.map((id) => getStationById(id)?.name || id),
+          totalTimeMinutes: comparisonResult.bfs.distance,
+          startStation: getStationById(bfsPath[0]),
+          endStation: getStationById(bfsPath[bfsPath.length - 1]),
+        },
+        timeDifference: comparisonResult.timeDifference,
+        pathLengthDifference: comparisonResult.pathLengthDifference,
+        nodesExploredDifference: comparisonResult.nodesExploredDifference,
+        isPathIdentical: comparisonResult.isPathIdentical,
+        isComparison: true,
+      };
+    }
+
+    return null;
   };
 
   const routeDetails = getRouteDetails();
@@ -124,7 +208,18 @@ export function RouteFinder() {
     }
   };
 
+  // For comparison mode, we need metrics for both algorithms
+  const getComparisonMetrics = () => {
+    if (!comparisonResult) return null;
+
+    return {
+      dijkstra: getDijkstraMetrics(comparisonResult.dijkstra),
+      bfs: getBFSMetrics(comparisonResult.bfs),
+    };
+  };
+
   const metrics = result ? getMetrics(result) : null;
+  const comparisonMetrics = comparisonResult ? getComparisonMetrics() : null;
 
   // Don't render anything until mounted on client
   if (!mounted) {
@@ -207,6 +302,9 @@ export function RouteFinder() {
                   <SelectItem value="bfs">
                     Breadth-First Search (BFS)
                   </SelectItem>
+                  <SelectItem value="compare">
+                    Compare Both Algorithms
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -233,60 +331,192 @@ export function RouteFinder() {
         {/* Main content area with tabs and results */}
         <div className="flex flex-col lg:flex-row gap-4 flex-grow">
           {/* Route Results - Only shown when there's a result */}
-          {result && routeDetails && (
+          {routeDetails && (
             <div className="lg:w-1/4">
               <Card className="shadow-sm h-full">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg">Route Details</CardTitle>
                   <CardDescription className="text-xs">
-                    {selectedAlgorithm === "dijkstra"
+                    {routeDetails.isComparison
+                      ? "Comparing both algorithms"
+                      : selectedAlgorithm === "dijkstra"
                       ? "Fastest route by travel time"
                       : "Route with fewest stations"}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3 pt-0">
-                  <div className="grid grid-cols-1 gap-2">
-                    <div className="p-2 bg-muted/40 rounded-md">
-                      <div className="flex items-center gap-1 mb-1">
-                        <Navigation className="h-4 w-4 text-primary" />
-                        <p className="text-xs font-medium">From - To</p>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {routeDetails.startStation?.name} →{" "}
-                        {routeDetails.endStation?.name}
-                      </p>
-                    </div>
-
-                    <div className="p-2 bg-muted/40 rounded-md">
-                      <div className="flex items-center gap-1 mb-1">
-                        <Clock className="h-4 w-4 text-primary" />
-                        <p className="text-xs font-medium">Travel Time</p>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {routeDetails.totalTimeMinutes} minutes
-                      </p>
-                    </div>
-
-                    <div className="p-2 bg-muted/40 rounded-md">
-                      <div className="flex items-center gap-1 mb-1">
-                        <BarChart className="h-4 w-4 text-primary" />
-                        <p className="text-xs font-medium">
-                          Stations ({routeDetails.totalStations})
+                  {routeDetails.isComparison ? (
+                    // Comparison mode route details
+                    <div className="grid grid-cols-1 gap-2">
+                      <div className="p-2 bg-muted/40 rounded-md">
+                        <div className="flex items-center gap-1 mb-1">
+                          <Navigation className="h-4 w-4 text-primary" />
+                          <p className="text-xs font-medium">From - To</p>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {routeDetails.dijkstra.startStation?.name} →{" "}
+                          {routeDetails.dijkstra.endStation?.name}
                         </p>
                       </div>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {routeDetails.stationNames.map((name, index) => (
-                          <Badge
-                            key={index}
-                            variant="outline"
-                            className="text-xs py-0 h-5"
-                          >
-                            {name}
-                          </Badge>
-                        ))}
+
+                      {/* Dijkstra details */}
+                      <div className="p-2 bg-red-500/10 rounded-md">
+                        <div className="flex items-center gap-1 mb-1">
+                          <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                          <p className="text-xs font-medium">
+                            Dijkstra's Algorithm
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1 mt-1">
+                          <div>
+                            <p className="text-[10px] text-muted-foreground">
+                              Travel Time:
+                            </p>
+                            <p className="text-xs font-medium">
+                              {routeDetails.dijkstra.totalTimeMinutes} min
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-muted-foreground">
+                              Stations:
+                            </p>
+                            <p className="text-xs font-medium">
+                              {routeDetails.dijkstra.totalStations}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* BFS details */}
+                      <div className="p-2 bg-blue-500/10 rounded-md">
+                        <div className="flex items-center gap-1 mb-1">
+                          <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                          <p className="text-xs font-medium">
+                            Breadth-First Search
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1 mt-1">
+                          <div>
+                            <p className="text-[10px] text-muted-foreground">
+                              Travel Time:
+                            </p>
+                            <p className="text-xs font-medium">
+                              {routeDetails.bfs.totalTimeMinutes} min
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-muted-foreground">
+                              Stations:
+                            </p>
+                            <p className="text-xs font-medium">
+                              {routeDetails.bfs.totalStations}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Comparison summary */}
+                      <div className="p-2 bg-muted/40 rounded-md">
+                        <div className="flex items-center gap-1 mb-1">
+                          <BarChart className="h-4 w-4 text-primary" />
+                          <p className="text-xs font-medium">
+                            Comparison Summary
+                          </p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[10px] flex justify-between">
+                            <span>Time Difference:</span>
+                            <span
+                              className={
+                                routeDetails.timeDifference > 0
+                                  ? "text-red-500"
+                                  : routeDetails.timeDifference < 0
+                                  ? "text-blue-500"
+                                  : ""
+                              }
+                            >
+                              {Math.abs(routeDetails.timeDifference)} min{" "}
+                              {routeDetails.timeDifference > 0
+                                ? "(Dijkstra +)"
+                                : routeDetails.timeDifference < 0
+                                ? "(BFS +)"
+                                : ""}
+                            </span>
+                          </p>
+                          <p className="text-[10px] flex justify-between">
+                            <span>Path Difference:</span>
+                            <span
+                              className={
+                                routeDetails.pathLengthDifference > 0
+                                  ? "text-red-500"
+                                  : routeDetails.pathLengthDifference < 0
+                                  ? "text-blue-500"
+                                  : ""
+                              }
+                            >
+                              {Math.abs(routeDetails.pathLengthDifference)}{" "}
+                              stations{" "}
+                              {routeDetails.pathLengthDifference > 0
+                                ? "(Dijkstra +)"
+                                : routeDetails.pathLengthDifference < 0
+                                ? "(BFS +)"
+                                : ""}
+                            </span>
+                          </p>
+                          <p className="text-[10px] flex justify-between">
+                            <span>Same Path:</span>
+                            <span>
+                              {routeDetails.isPathIdentical ? "Yes" : "No"}
+                            </span>
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ) : (
+                    // Single algorithm route details
+                    <div className="grid grid-cols-1 gap-2">
+                      <div className="p-2 bg-muted/40 rounded-md">
+                        <div className="flex items-center gap-1 mb-1">
+                          <Navigation className="h-4 w-4 text-primary" />
+                          <p className="text-xs font-medium">From - To</p>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {routeDetails.startStation?.name} →{" "}
+                          {routeDetails.endStation?.name}
+                        </p>
+                      </div>
+
+                      <div className="p-2 bg-muted/40 rounded-md">
+                        <div className="flex items-center gap-1 mb-1">
+                          <Clock className="h-4 w-4 text-primary" />
+                          <p className="text-xs font-medium">Travel Time</p>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {routeDetails.totalTimeMinutes} minutes
+                        </p>
+                      </div>
+
+                      <div className="p-2 bg-muted/40 rounded-md">
+                        <div className="flex items-center gap-1 mb-1">
+                          <BarChart className="h-4 w-4 text-primary" />
+                          <p className="text-xs font-medium">
+                            Stations ({routeDetails.totalStations})
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {routeDetails.stationNames.map((name, index) => (
+                            <Badge
+                              key={index}
+                              variant="outline"
+                              className="text-xs py-0 h-5"
+                            >
+                              {name}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -317,13 +547,71 @@ export function RouteFinder() {
                       selectedPath={result?.path || []}
                       startNodeId={startNodeId}
                       endNodeId={endNodeId}
+                      comparisonMode={!!comparisonResult}
+                      dijkstraPath={comparisonResult?.dijkstra.path || []}
+                      bfsPath={comparisonResult?.bfs.path || []}
                     />
                   </div>
                 </TabsContent>
 
                 <TabsContent value="visualization" className="h-full m-0 p-0">
                   <div className="h-full border rounded-md overflow-auto">
-                    {result ? (
+                    {comparisonResult ? (
+                      // Show comparison visualization
+                      <div className="p-4">
+                        <div className="mb-4">
+                          <h3 className="text-lg font-medium mb-2">
+                            Algorithm Comparison
+                          </h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Dijkstra visualization */}
+                            <div className="border rounded-md p-3">
+                              <h4 className="text-sm font-medium mb-2 flex items-center">
+                                <span className="w-3 h-3 rounded-full bg-red-500 mr-2"></span>
+                                Dijkstra's Algorithm
+                              </h4>
+                              <AnimatedAlgorithmSteps
+                                steps={comparisonResult.dijkstra.steps}
+                                path={comparisonResult.dijkstra.path}
+                                graph={transjakartaGraph}
+                                algorithmName="dijkstra"
+                              />
+                            </div>
+
+                            {/* BFS visualization */}
+                            <div className="border rounded-md p-3">
+                              <h4 className="text-sm font-medium mb-2 flex items-center">
+                                <span className="w-3 h-3 rounded-full bg-blue-500 mr-2"></span>
+                                Breadth-First Search
+                              </h4>
+                              <AnimatedAlgorithmSteps
+                                steps={comparisonResult.bfs.steps}
+                                path={comparisonResult.bfs.path}
+                                graph={transjakartaGraph}
+                                algorithmName="bfs"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Import and use the comparison component */}
+                        <div className="mt-4">
+                          <AlgorithmComparison
+                            dijkstra={comparisonResult.dijkstra}
+                            bfs={comparisonResult.bfs}
+                            timeDifference={comparisonResult.timeDifference}
+                            pathLengthDifference={
+                              comparisonResult.pathLengthDifference
+                            }
+                            nodesExploredDifference={
+                              comparisonResult.nodesExploredDifference
+                            }
+                            isPathIdentical={comparisonResult.isPathIdentical}
+                          />
+                        </div>
+                      </div>
+                    ) : result ? (
+                      // Show single algorithm visualization
                       <div className="p-4">
                         <AnimatedAlgorithmSteps
                           steps={result.steps}
@@ -334,6 +622,7 @@ export function RouteFinder() {
                         <AlgorithmMetrics result={result} />
                       </div>
                     ) : (
+                      // Show empty state
                       <div className="h-full flex items-center justify-center">
                         <div className="text-center p-6">
                           <SearchIcon className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
