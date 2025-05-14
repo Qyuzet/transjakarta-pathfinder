@@ -62,6 +62,12 @@ type ComparisonResult = {
   pathLengthDifference: number;
   nodesExploredDifference: number;
   isPathIdentical: boolean;
+  executionTimeDifferenceMs: number;
+  operationsDifference: number;
+  edgesProcessedDifference: number;
+  memoryUsageDifference: number;
+  efficiencyRatio: number;
+  speedRatio: number;
 };
 
 export function RouteFinder() {
@@ -107,6 +113,28 @@ export function RouteFinder() {
           dijkstraResult.path.length - bfsResult.path.length;
         const nodesExploredDifference =
           dijkstraResult.nodesExplored - bfsResult.nodesExplored;
+        const executionTimeDifferenceMs =
+          dijkstraResult.executionTimeMs - bfsResult.executionTimeMs;
+        const operationsDifference =
+          dijkstraResult.priorityQueueOperations - bfsResult.queueOperations;
+        const edgesProcessedDifference =
+          dijkstraResult.edgesProcessed - bfsResult.edgesProcessed;
+        const memoryUsageDifference =
+          dijkstraResult.memoryUsageEstimate - bfsResult.memoryUsageEstimate;
+
+        // Calculate efficiency and speed ratios
+        const dijkstraEfficiency =
+          dijkstraResult.path.length / (dijkstraResult.nodesExplored || 1);
+        const bfsEfficiency =
+          bfsResult.path.length / (bfsResult.nodesExplored || 1);
+        const efficiencyRatio = dijkstraEfficiency / (bfsEfficiency || 1);
+
+        const dijkstraSpeed =
+          dijkstraResult.priorityQueueOperations /
+          (dijkstraResult.executionTimeMs || 1);
+        const bfsSpeed =
+          bfsResult.queueOperations / (bfsResult.executionTimeMs || 1);
+        const speedRatio = dijkstraSpeed / (bfsSpeed || 1);
 
         // Check if paths are identical
         const isPathIdentical =
@@ -123,6 +151,12 @@ export function RouteFinder() {
           pathLengthDifference,
           nodesExploredDifference,
           isPathIdentical,
+          executionTimeDifferenceMs,
+          operationsDifference,
+          edgesProcessedDifference,
+          memoryUsageDifference,
+          efficiencyRatio,
+          speedRatio,
         };
 
         setComparisonResult(comparison);
@@ -607,6 +641,20 @@ export function RouteFinder() {
                               comparisonResult.nodesExploredDifference
                             }
                             isPathIdentical={comparisonResult.isPathIdentical}
+                            executionTimeDifferenceMs={
+                              comparisonResult.executionTimeDifferenceMs
+                            }
+                            operationsDifference={
+                              comparisonResult.operationsDifference
+                            }
+                            edgesProcessedDifference={
+                              comparisonResult.edgesProcessedDifference
+                            }
+                            memoryUsageDifference={
+                              comparisonResult.memoryUsageDifference
+                            }
+                            efficiencyRatio={comparisonResult.efficiencyRatio}
+                            speedRatio={comparisonResult.speedRatio}
                           />
                         </div>
                       </div>
