@@ -155,4 +155,54 @@
   .station-card-selected {
     @apply border-primary bg-primary/10;
   }
+
+  /* Graph visualization styles */
+  .graph-visualization {
+    @apply overflow-visible;
+  }
+
+  .graph-node {
+    @apply cursor-pointer transition-all duration-300;
+  }
+
+  .graph-node.node-unvisited {
+    @apply fill-[hsl(var(--unvisited-node))];
+  }
+
+  .graph-node.node-visited {
+    @apply fill-[hsl(var(--visited-node))];
+  }
+
+  .graph-node.node-current {
+    @apply fill-[hsl(var(--current-node))];
+  }
+
+  .graph-node.node-path {
+    @apply fill-[hsl(var(--path-node))];
+  }
+
+  .graph-edge {
+    @apply transition-all duration-300;
+  }
+
+  .graph-edge.edge-unvisited {
+    @apply stroke-muted-foreground/30;
+  }
+
+  .graph-edge.edge-frontier {
+    @apply stroke-amber-500/70;
+  }
+
+  .graph-edge.edge-visited {
+    @apply stroke-[hsl(var(--visited-node))]/70;
+  }
+
+  .graph-edge.edge-current {
+    @apply stroke-[hsl(var(--current-node))];
+  }
+
+  .graph-edge.edge-path {
+    @apply stroke-[hsl(var(--path-node))] stroke-[3px];
+    stroke-dasharray: 5, 3;
+  }
 }
