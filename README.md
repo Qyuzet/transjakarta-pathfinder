@@ -216,7 +216,7 @@ This project serves several educational purposes:
 
 ## Deployment
 
-The project is deployed on Vercel and can be accessed at [https://transjakarta-pathfinder.vercel.app](https://transjakarta-pathfinder.vercel.app)
+The project is deployed on Vercel and can be accessed at TBA
 
 ## Future Enhancements
 
