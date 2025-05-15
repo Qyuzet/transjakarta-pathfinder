@@ -1,10 +1,17 @@
 # TransJakarta Pathfinder: Algorithm Analysis Project
 
-![TransJakarta Pathfinder](https://i.imgur.com/XYZ123.png)
 
 ## Project Overview
 
 TransJakarta Pathfinder is an educational platform that demonstrates and compares pathfinding algorithms (Dijkstra's Algorithm and Breadth-First Search) for finding optimal routes on the TransJakarta bus network. This project was developed as a final assignment for the Algorithm Analysis course.
+
+![image](https://github.com/user-attachments/assets/7fe63e7d-18af-4771-8114-9066ec276c4a)
+
+![image](https://github.com/user-attachments/assets/8e4effb8-1394-4b58-a0a4-a1bc33647424)
+
+![image](https://github.com/user-attachments/assets/4b42452f-f0b7-4f76-87c5-5306600e22e2)
+
+![image](https://github.com/user-attachments/assets/bc6822e1-29ec-4a89-85a4-e5a28608e0d9)
 
 ### Key Features
 
