@@ -13,9 +13,23 @@ import {
   LayerGroup,
 } from "react-leaflet";
 import { Icon, divIcon } from "leaflet";
-import { transjakartaGraph, getNodeById } from "@/lib/data/transjakarta-routes";
+import {
+  combinedTransportGraph,
+  transjakartaGraph,
+  jaklingkoGraph,
+  mrtGraph,
+  krlGraph,
+  lrtGraph,
+  getTransportModeColor,
+  getTransportModeIcon,
+  getCorridorColor,
+} from "@/lib/data/combined-transport";
+
+import { Node, Edge, TransportMode } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Bus, Map, X } from "lucide-react";
+import { Bus, Map, X, Train, Car } from "lucide-react";
+
+// Using getCorridorColor imported from combined-transport.ts
 
 // Default Jakarta center coordinates
 const JAKARTA_CENTER = { lat: -6.1944, lng: 106.8229 };
@@ -29,6 +43,11 @@ type MapProps = {
   dijkstraPath?: string[];
   bfsPath?: string[];
 };
+
+// Helper function to get a node by ID from the combined graph
+function getNodeById(nodeId: string): Node | undefined {
+  return combinedTransportGraph.nodes.find((node) => node.id === nodeId);
+}
 
 // Custom center component to update map view when path changes
 function SetViewOnPath({
@@ -136,7 +155,7 @@ export function InteractiveMap({
         .filter(Boolean) as [number, number][])
     : [];
 
-  // Create custom icons based on station type
+  // Create custom icons based on station type and transport mode
   const getStationIcon = (node: Node) => {
     // If it's the start or end node, use special icons
     if (node.id === startNodeId) {
@@ -161,11 +180,21 @@ export function InteractiveMap({
       });
     }
 
-    // Otherwise, use icons based on station type
+    // Otherwise, use icons based on station type and transport mode
     const stationType = node.stationType || "regular";
-    const corridorColor = node.corridor
-      ? getCorridorColor(node.corridor)
-      : "#6366f1";
+
+    // Determine primary transport mode and color
+    let primaryMode: TransportMode = "transjakarta";
+    let primaryColor = "#6366f1"; // Default color
+
+    if (node.transportModes && node.transportModes.length > 0) {
+      // Use the first transport mode as primary
+      primaryMode = node.transportModes[0];
+      primaryColor = getTransportModeColor(primaryMode);
+    } else if (node.corridor) {
+      // Fallback to corridor color for TransJakarta
+      primaryColor = getCorridorColor(node.corridor);
+    }
 
     // Create a short name for the station (first letter of each word)
     const shortName = node.name
@@ -175,31 +204,49 @@ export function InteractiveMap({
       .substring(0, 2)
       .toUpperCase();
 
-    // Create corridor label
-    const corridorLabel = node.corridor ? `C${node.corridor}` : "";
+    // Create route/corridor label
+    let routeLabel = "";
+    if (node.corridor) {
+      routeLabel = `C${node.corridor}`;
+    } else if (node.routeNumbers && node.routeNumbers.length > 0) {
+      routeLabel = node.routeNumbers[0];
+    }
+
+    // Get transport mode icon
+    const modeIcon = getTransportModeIcon(primaryMode);
 
     // Create different icons based on station type
     if (stationType === "terminal") {
       return divIcon({
         className: "custom-div-icon",
-        html: `<div class="bus-stop-marker" style="background-color: ${corridorColor}; border: 2px solid white;">
+        html: `<div class="bus-stop-marker" style="background-color: ${primaryColor}; border: 2px solid white;">
           <div class="marker-label">${shortName}</div>
           <div class="marker-details">
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-terminal-square"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><path d="m7 15 3-3-3-3"/><path d="M17 15h-6"/></svg>
-            ${corridorLabel}
+            ${modeIcon}
+            ${routeLabel}
           </div>
         </div>`,
         iconSize: [40, 40],
         iconAnchor: [20, 20],
       });
     } else if (stationType === "interchange") {
+      // For interchange stations, show multiple transport modes if available
+      let modeIcons = modeIcon;
+      if (node.transportModes && node.transportModes.length > 1) {
+        // Show up to 2 transport mode icons
+        modeIcons = node.transportModes
+          .slice(0, 2)
+          .map((mode) => getTransportModeIcon(mode))
+          .join("");
+      }
+
       return divIcon({
         className: "custom-div-icon",
-        html: `<div class="bus-stop-marker" style="background-color: ${corridorColor}; border: 2px solid white;">
+        html: `<div class="bus-stop-marker" style="background-color: ${primaryColor}; border: 2px solid white;">
           <div class="marker-label">${shortName}</div>
           <div class="marker-details">
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-git-merge"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 9v12"/><path d="m18 15-6-6"/></svg>
-            ${corridorLabel}
+            ${modeIcons}
+            ${routeLabel}
           </div>
         </div>`,
         iconSize: [40, 40],
@@ -208,11 +255,11 @@ export function InteractiveMap({
     } else {
       return divIcon({
         className: "custom-div-icon",
-        html: `<div class="bus-stop-marker" style="background-color: ${corridorColor};">
+        html: `<div class="bus-stop-marker" style="background-color: ${primaryColor};">
           <div class="marker-label">${shortName}</div>
           <div class="marker-details">
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bus"><path d="M8 6v6"/><path d="M16 6v6"/><path d="M2 12h20"/><path d="M18 18h2a2 2 0 0 0 2-2v-6a8 8 0 0 0-16 0v6a2 2 0 0 0 2 2h2"/><path d="M8 18v2"/><path d="M16 18v2"/></svg>
-            ${corridorLabel}
+            ${modeIcon}
+            ${routeLabel}
           </div>
         </div>`,
         iconSize: [40, 40],
@@ -221,36 +268,23 @@ export function InteractiveMap({
     }
   };
 
-  // Helper function to get corridor color
-  const getCorridorColor = (corridor: string): string => {
-    const corridorColors: Record<string, string> = {
-      "1": "#d32f2f", // Red
-      "2": "#1976d2", // Blue
-      "3": "#388e3c", // Green
-      "4": "#ffa000", // Amber
-      "5": "#7b1fa2", // Purple
-      "6": "#c2185b", // Pink
-      "7": "#0097a7", // Cyan
-      "8": "#f57c00", // Orange
-      "9": "#5d4037", // Brown
-      "10": "#455a64", // Blue Grey
-      B1: "#009688", // Teal
-      T1: "#ff5722", // Deep Orange
-      D1: "#795548", // Brown
-      C1: "#607d8b", // Blue Grey
-    };
+  // Using getCorridorColor from the imports
 
-    return corridorColors[corridor] || "#6366f1";
-  };
-
-  // Function to render corridor-specific route segments
+  // Function to render transport-specific route segments
   const renderCorridorSpecificRoutes = (path: string[]) => {
     if (path.length < 2) return null;
 
-    // Group path segments by corridor
-    const corridorSegments: Record<
+    // Group path segments by transport mode and corridor/route
+    const transportSegments: Record<
       string,
-      { start: string; end: string; coords: [number, number][] }[]
+      {
+        start: string;
+        end: string;
+        coords: [number, number][];
+        transportMode?: TransportMode;
+        routeNumber?: string;
+        edge: Edge;
+      }[]
     > = {};
 
     // Process each segment in the path
@@ -258,15 +292,19 @@ export function InteractiveMap({
       const sourceId = path[i];
       const targetId = path[i + 1];
 
-      // Find the edge between these nodes
-      const edge = transjakartaGraph.edges.find(
+      // Find the edge between these nodes in the combined graph
+      const edge = combinedTransportGraph.edges.find(
         (e) => e.source === sourceId && e.target === targetId
       );
 
       if (!edge) continue;
 
-      // Get the corridor (default to "unknown" if not specified)
-      const corridor = edge.corridor || "unknown";
+      // Get the transport mode and route/corridor identifier
+      const transportMode = edge.transportMode || "transjakarta";
+      const routeId = edge.corridor || edge.routeNumber || "unknown";
+
+      // Create a unique key for this transport mode + route combination
+      const segmentKey = `${transportMode}-${routeId}`;
 
       // Get coordinates for this segment
       const sourceNode = getNodeById(sourceId);
@@ -279,52 +317,86 @@ export function InteractiveMap({
         [targetNode.latitude, targetNode.longitude],
       ];
 
-      // Add to corridor segments
-      if (!corridorSegments[corridor]) {
-        corridorSegments[corridor] = [];
+      // Add to transport segments
+      if (!transportSegments[segmentKey]) {
+        transportSegments[segmentKey] = [];
       }
 
-      corridorSegments[corridor].push({
+      transportSegments[segmentKey].push({
         start: sourceId,
         end: targetId,
         coords,
+        transportMode,
+        routeNumber: routeId,
+        edge,
       });
     }
 
-    // Render each corridor's segments with appropriate styling
+    // Render each transport mode's segments with appropriate styling
     return (
       <>
-        {Object.entries(corridorSegments).map(([corridor, segments]) => (
-          <React.Fragment key={corridor}>
-            {segments.map((segment, index) => (
-              <Polyline
-                key={`${corridor}-${segment.start}-${segment.end}-${index}`}
-                positions={segment.coords}
-                color={getCorridorColor(corridor)}
-                weight={5}
-                opacity={0.8}
-                dashArray={corridor === "unknown" ? "5,5" : ""}
-                className="corridor-route"
-              >
-                <Popup>
-                  <div className="p-2">
-                    <h3 className="text-xs font-medium">
-                      {corridor !== "unknown"
-                        ? `Corridor ${corridor}`
-                        : "Connection"}
-                    </h3>
-                    <p className="text-[10px] mt-1">
-                      From: {getNodeById(segment.start)?.name || segment.start}
-                    </p>
-                    <p className="text-[10px]">
-                      To: {getNodeById(segment.end)?.name || segment.end}
-                    </p>
-                  </div>
-                </Popup>
-              </Polyline>
-            ))}
-          </React.Fragment>
-        ))}
+        {Object.entries(transportSegments).map(([segmentKey, segments]) => {
+          // Get the first segment to determine styling
+          const firstSegment = segments[0];
+          const transportMode = firstSegment.transportMode || "transjakarta";
+          const routeId = firstSegment.routeNumber || "unknown";
+
+          // Determine color based on transport mode and route
+          let color = "#6366f1"; // Default color
+          if (transportMode === "transjakarta" && routeId !== "unknown") {
+            color = getCorridorColor(routeId);
+          } else {
+            color = getTransportModeColor(transportMode);
+          }
+
+          return (
+            <React.Fragment key={segmentKey}>
+              {segments.map((segment, index) => (
+                <Polyline
+                  key={`${segmentKey}-${segment.start}-${segment.end}-${index}`}
+                  positions={segment.coords}
+                  color={color}
+                  weight={5}
+                  opacity={0.8}
+                  dashArray={routeId === "unknown" ? "5,5" : ""}
+                  className="transport-route"
+                >
+                  <Popup>
+                    <div className="p-2">
+                      <h3 className="text-xs font-medium">
+                        {transportMode.charAt(0).toUpperCase() +
+                          transportMode.slice(1)}
+                        {routeId !== "unknown" ? ` ${routeId}` : ""}
+                      </h3>
+                      <p className="text-[10px] mt-1">
+                        From:{" "}
+                        {getNodeById(segment.start)?.name || segment.start}
+                      </p>
+                      <p className="text-[10px]">
+                        To: {getNodeById(segment.end)?.name || segment.end}
+                      </p>
+                      {segment.edge.distance && (
+                        <p className="text-[10px] mt-1">
+                          Distance: {segment.edge.distance.toFixed(2)} km
+                        </p>
+                      )}
+                      {segment.edge.weight && (
+                        <p className="text-[10px]">
+                          Travel time: {segment.edge.weight} min
+                        </p>
+                      )}
+                      {segment.edge.fare && (
+                        <p className="text-[10px]">
+                          Fare: Rp {segment.edge.fare.toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+                  </Popup>
+                </Polyline>
+              ))}
+            </React.Fragment>
+          );
+        })}
       </>
     );
   };
@@ -351,9 +423,9 @@ export function InteractiveMap({
 
       {/* Map Legend */}
       {showLegend && (
-        <div className="absolute bottom-12 left-2 z-[1000] bg-white/90 dark:bg-gray-900/90 p-2 rounded-md shadow-md border max-w-[200px] text-xs">
+        <div className="absolute bottom-12 left-2 z-[1000] bg-white/90 dark:bg-gray-900/90 p-2 rounded-md shadow-md border max-w-[250px] text-xs overflow-y-auto max-h-[80vh]">
           <div className="flex items-center justify-between mb-1">
-            <h4 className="font-medium">TransJakarta Legend</h4>
+            <h4 className="font-medium">Jabodetabek Transport Legend</h4>
             <Button
               size="sm"
               variant="ghost"
@@ -363,7 +435,12 @@ export function InteractiveMap({
               <X className="h-3 w-3" />
             </Button>
           </div>
+
+          {/* Station Types */}
           <div className="space-y-1">
+            <h5 className="font-medium text-[10px] uppercase mt-2 mb-1">
+              Station Types
+            </h5>
             <div className="flex items-center gap-1">
               <div className="w-4 h-4 rounded-md bg-[#10b981] flex items-center justify-center text-white text-[8px] font-bold">
                 A
@@ -403,20 +480,91 @@ export function InteractiveMap({
               </div>
               <span>Regular Station</span>
             </div>
-            <div className="mt-1 pt-1 border-t">
-              <div className="grid grid-cols-2 gap-1">
-                {["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"].map(
-                  (corridor) => (
-                    <div key={corridor} className="flex items-center gap-1">
-                      <div
-                        className="w-3 h-1 rounded-full"
-                        style={{ backgroundColor: getCorridorColor(corridor) }}
-                      ></div>
-                      <span>Corridor {corridor}</span>
-                    </div>
-                  )
-                )}
+          </div>
+
+          {/* Transport Modes */}
+          <div className="mt-2 pt-1 border-t">
+            <h5 className="font-medium text-[10px] uppercase mt-1 mb-1">
+              Transport Modes
+            </h5>
+            <div className="space-y-1">
+              <div className="flex items-center gap-1">
+                <div
+                  className="w-3 h-2 rounded-full"
+                  style={{
+                    backgroundColor: getTransportModeColor("transjakarta"),
+                  }}
+                ></div>
+                <span>TransJakarta</span>
               </div>
+              <div className="flex items-center gap-1">
+                <div
+                  className="w-3 h-2 rounded-full"
+                  style={{
+                    backgroundColor: getTransportModeColor("jaklingko"),
+                  }}
+                ></div>
+                <span>JakLingko</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div
+                  className="w-3 h-2 rounded-full"
+                  style={{ backgroundColor: getTransportModeColor("mrt") }}
+                ></div>
+                <span>MRT Jakarta</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div
+                  className="w-3 h-2 rounded-full"
+                  style={{ backgroundColor: getTransportModeColor("krl") }}
+                ></div>
+                <span>KRL Commuter Line</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div
+                  className="w-3 h-2 rounded-full"
+                  style={{ backgroundColor: getTransportModeColor("lrt") }}
+                ></div>
+                <span>LRT Jakarta</span>
+              </div>
+            </div>
+          </div>
+
+          {/* TransJakarta Corridors */}
+          <div className="mt-2 pt-1 border-t">
+            <h5 className="font-medium text-[10px] uppercase mt-1 mb-1">
+              TransJakarta Corridors
+            </h5>
+            <div className="grid grid-cols-2 gap-1">
+              {["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"].map(
+                (corridor) => (
+                  <div key={corridor} className="flex items-center gap-1">
+                    <div
+                      className="w-3 h-1 rounded-full"
+                      style={{ backgroundColor: getCorridorColor(corridor) }}
+                    ></div>
+                    <span>Corridor {corridor}</span>
+                  </div>
+                )
+              )}
+            </div>
+          </div>
+
+          {/* JakLingko Routes */}
+          <div className="mt-2 pt-1 border-t">
+            <h5 className="font-medium text-[10px] uppercase mt-1 mb-1">
+              JakLingko Routes
+            </h5>
+            <div className="grid grid-cols-2 gap-1">
+              {["JAK01", "JAK02", "JAK03", "JAK04"].map((route) => (
+                <div key={route} className="flex items-center gap-1">
+                  <div
+                    className="w-3 h-1 rounded-full"
+                    style={{ backgroundColor: "#FF9800" }}
+                  ></div>
+                  <span>{route}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -449,12 +597,13 @@ export function InteractiveMap({
             />
           </LayersControl.BaseLayer>
 
-          {/* Overlay layers for corridors */}
+          {/* Transport Mode Layers */}
+          {/* TransJakarta Corridors */}
           {["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"].map(
             (corridor) => (
               <LayersControl.Overlay
-                key={corridor}
-                name={`Corridor ${corridor}`}
+                key={`tj-${corridor}`}
+                name={`TransJakarta Corridor ${corridor}`}
                 checked={!startNodeId && !endNodeId} // Only show by default if no path is selected
               >
                 <LayerGroup>
@@ -462,7 +611,7 @@ export function InteractiveMap({
                     .filter((node) => node.corridor === corridor)
                     .map((node) => (
                       <Marker
-                        key={`overlay-${node.id}`}
+                        key={`overlay-tj-${node.id}`}
                         position={[node.latitude, node.longitude]}
                         icon={getStationIcon(node)}
                       >
@@ -565,6 +714,437 @@ export function InteractiveMap({
               </LayersControl.Overlay>
             )
           )}
+          {/* JakLingko Routes */}
+          {["JAK01", "JAK02", "JAK03", "JAK04"].map((route) => (
+            <LayersControl.Overlay
+              key={`jl-${route}`}
+              name={`JakLingko Route ${route}`}
+              checked={false}
+            >
+              <LayerGroup>
+                {jaklingkoGraph.nodes
+                  .filter((node) => node.routeNumbers?.includes(route))
+                  .map((node) => (
+                    <Marker
+                      key={`overlay-jl-${node.id}`}
+                      position={[node.latitude, node.longitude]}
+                      icon={getStationIcon(node)}
+                    >
+                      <Popup>
+                        <div className="p-2">
+                          <h3 className="font-bold">{node.name}</h3>
+                          <div
+                            className="text-xs font-medium px-1.5 py-0.5 rounded inline-block mt-1"
+                            style={{
+                              backgroundColor:
+                                getTransportModeColor("jaklingko") + "20",
+                              color: getTransportModeColor("jaklingko"),
+                            }}
+                          >
+                            JakLingko {route}
+                          </div>
+                          {node.stationType && (
+                            <p className="text-xs mt-1 capitalize">
+                              Type: {node.stationType}
+                            </p>
+                          )}
+                          {node.address && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {node.address}
+                            </p>
+                          )}
+                          {node.facilities && node.facilities.length > 0 && (
+                            <div className="mt-2">
+                              <p className="text-xs font-medium">Facilities:</p>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {node.facilities.map((facility, index) => (
+                                  <span
+                                    key={index}
+                                    className="text-[10px] px-1.5 py-0.5 rounded capitalize font-medium"
+                                    style={{
+                                      backgroundColor:
+                                        getTransportModeColor("jaklingko") +
+                                        "20",
+                                      color: getTransportModeColor("jaklingko"),
+                                    }}
+                                  >
+                                    {facility}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </Popup>
+                    </Marker>
+                  ))}
+
+                {/* Draw JakLingko routes */}
+                {jaklingkoGraph.edges
+                  .filter((edge) => edge.routeNumber === route)
+                  .map((edge, index) => {
+                    const sourceNode = getNodeById(edge.source);
+                    const targetNode = getNodeById(edge.target);
+
+                    if (!sourceNode || !targetNode) return null;
+
+                    const coords: [number, number][] = [
+                      [sourceNode.latitude, sourceNode.longitude],
+                      [targetNode.latitude, targetNode.longitude],
+                    ];
+
+                    return (
+                      <Polyline
+                        key={`jaklingko-${route}-edge-${index}`}
+                        positions={coords}
+                        color={edge.color || getTransportModeColor("jaklingko")}
+                        weight={3}
+                        opacity={0.6}
+                        className="jaklingko-route"
+                      >
+                        <Popup>
+                          <div className="p-2">
+                            <h3 className="text-xs font-medium">
+                              JakLingko {route}
+                            </h3>
+                            <p className="text-[10px] mt-1">
+                              From: {sourceNode.name}
+                            </p>
+                            <p className="text-[10px]">To: {targetNode.name}</p>
+                            <p className="text-[10px] mt-1">
+                              Distance: {edge.distance.toFixed(2)} km
+                            </p>
+                            <p className="text-[10px]">
+                              Travel time: {edge.weight} min
+                            </p>
+                            {edge.fare && (
+                              <p className="text-[10px]">
+                                Fare: Rp {edge.fare.toLocaleString()}
+                              </p>
+                            )}
+                          </div>
+                        </Popup>
+                      </Polyline>
+                    );
+                  })}
+              </LayerGroup>
+            </LayersControl.Overlay>
+          ))}
+
+          {/* MRT Routes */}
+          <LayersControl.Overlay name="MRT Jakarta" checked={false}>
+            <LayerGroup>
+              {mrtGraph.nodes.map((node) => (
+                <Marker
+                  key={`overlay-mrt-${node.id}`}
+                  position={[node.latitude, node.longitude]}
+                  icon={getStationIcon(node)}
+                >
+                  <Popup>
+                    <div className="p-2">
+                      <h3 className="font-bold">{node.name}</h3>
+                      <div
+                        className="text-xs font-medium px-1.5 py-0.5 rounded inline-block mt-1"
+                        style={{
+                          backgroundColor: getTransportModeColor("mrt") + "20",
+                          color: getTransportModeColor("mrt"),
+                        }}
+                      >
+                        MRT {node.routeNumbers?.[0] || ""}
+                      </div>
+                      {node.stationType && (
+                        <p className="text-xs mt-1 capitalize">
+                          Type: {node.stationType}
+                        </p>
+                      )}
+                      {node.address && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {node.address}
+                        </p>
+                      )}
+                      {node.facilities && node.facilities.length > 0 && (
+                        <div className="mt-2">
+                          <p className="text-xs font-medium">Facilities:</p>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {node.facilities.map((facility, index) => (
+                              <span
+                                key={index}
+                                className="text-[10px] px-1.5 py-0.5 rounded capitalize font-medium"
+                                style={{
+                                  backgroundColor:
+                                    getTransportModeColor("mrt") + "20",
+                                  color: getTransportModeColor("mrt"),
+                                }}
+                              >
+                                {facility}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </Popup>
+                </Marker>
+              ))}
+
+              {/* Draw MRT routes */}
+              {mrtGraph.edges.map((edge, index) => {
+                const sourceNode = getNodeById(edge.source);
+                const targetNode = getNodeById(edge.target);
+
+                if (!sourceNode || !targetNode) return null;
+
+                const coords: [number, number][] = [
+                  [sourceNode.latitude, sourceNode.longitude],
+                  [targetNode.latitude, targetNode.longitude],
+                ];
+
+                return (
+                  <Polyline
+                    key={`mrt-edge-${index}`}
+                    positions={coords}
+                    color={edge.color || getTransportModeColor("mrt")}
+                    weight={4}
+                    opacity={0.7}
+                    className="mrt-route"
+                  >
+                    <Popup>
+                      <div className="p-2">
+                        <h3 className="text-xs font-medium">
+                          MRT {edge.routeNumber || ""}
+                        </h3>
+                        <p className="text-[10px] mt-1">
+                          From: {sourceNode.name}
+                        </p>
+                        <p className="text-[10px]">To: {targetNode.name}</p>
+                        <p className="text-[10px] mt-1">
+                          Distance: {edge.distance.toFixed(2)} km
+                        </p>
+                        <p className="text-[10px]">
+                          Travel time: {edge.weight} min
+                        </p>
+                        {edge.fare && (
+                          <p className="text-[10px]">
+                            Fare: Rp {edge.fare.toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                    </Popup>
+                  </Polyline>
+                );
+              })}
+            </LayerGroup>
+          </LayersControl.Overlay>
+
+          {/* KRL Routes */}
+          <LayersControl.Overlay name="KRL Commuter Line" checked={false}>
+            <LayerGroup>
+              {krlGraph.nodes.map((node) => (
+                <Marker
+                  key={`overlay-krl-${node.id}`}
+                  position={[node.latitude, node.longitude]}
+                  icon={getStationIcon(node)}
+                >
+                  <Popup>
+                    <div className="p-2">
+                      <h3 className="font-bold">{node.name}</h3>
+                      <div
+                        className="text-xs font-medium px-1.5 py-0.5 rounded inline-block mt-1"
+                        style={{
+                          backgroundColor: getTransportModeColor("krl") + "20",
+                          color: getTransportModeColor("krl"),
+                        }}
+                      >
+                        KRL {node.routeNumbers?.join(", ") || ""}
+                      </div>
+                      {node.stationType && (
+                        <p className="text-xs mt-1 capitalize">
+                          Type: {node.stationType}
+                        </p>
+                      )}
+                      {node.address && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {node.address}
+                        </p>
+                      )}
+                      {node.facilities && node.facilities.length > 0 && (
+                        <div className="mt-2">
+                          <p className="text-xs font-medium">Facilities:</p>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {node.facilities.map((facility, index) => (
+                              <span
+                                key={index}
+                                className="text-[10px] px-1.5 py-0.5 rounded capitalize font-medium"
+                                style={{
+                                  backgroundColor:
+                                    getTransportModeColor("krl") + "20",
+                                  color: getTransportModeColor("krl"),
+                                }}
+                              >
+                                {facility}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </Popup>
+                </Marker>
+              ))}
+
+              {/* Draw KRL routes */}
+              {krlGraph.edges.map((edge, index) => {
+                const sourceNode = getNodeById(edge.source);
+                const targetNode = getNodeById(edge.target);
+
+                if (!sourceNode || !targetNode) return null;
+
+                const coords: [number, number][] = [
+                  [sourceNode.latitude, sourceNode.longitude],
+                  [targetNode.latitude, targetNode.longitude],
+                ];
+
+                return (
+                  <Polyline
+                    key={`krl-edge-${index}`}
+                    positions={coords}
+                    color={edge.color || getTransportModeColor("krl")}
+                    weight={4}
+                    opacity={0.7}
+                    className="krl-route"
+                  >
+                    <Popup>
+                      <div className="p-2">
+                        <h3 className="text-xs font-medium">
+                          KRL {edge.routeNumber || ""}
+                        </h3>
+                        <p className="text-[10px] mt-1">
+                          From: {sourceNode.name}
+                        </p>
+                        <p className="text-[10px]">To: {targetNode.name}</p>
+                        <p className="text-[10px] mt-1">
+                          Distance: {edge.distance.toFixed(2)} km
+                        </p>
+                        <p className="text-[10px]">
+                          Travel time: {edge.weight} min
+                        </p>
+                        {edge.fare && (
+                          <p className="text-[10px]">
+                            Fare: Rp {edge.fare.toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                    </Popup>
+                  </Polyline>
+                );
+              })}
+            </LayerGroup>
+          </LayersControl.Overlay>
+
+          {/* LRT Routes */}
+          <LayersControl.Overlay name="LRT Jakarta" checked={false}>
+            <LayerGroup>
+              {lrtGraph.nodes.map((node) => (
+                <Marker
+                  key={`overlay-lrt-${node.id}`}
+                  position={[node.latitude, node.longitude]}
+                  icon={getStationIcon(node)}
+                >
+                  <Popup>
+                    <div className="p-2">
+                      <h3 className="font-bold">{node.name}</h3>
+                      <div
+                        className="text-xs font-medium px-1.5 py-0.5 rounded inline-block mt-1"
+                        style={{
+                          backgroundColor: getTransportModeColor("lrt") + "20",
+                          color: getTransportModeColor("lrt"),
+                        }}
+                      >
+                        LRT {node.routeNumbers?.[0] || ""}
+                      </div>
+                      {node.stationType && (
+                        <p className="text-xs mt-1 capitalize">
+                          Type: {node.stationType}
+                        </p>
+                      )}
+                      {node.address && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {node.address}
+                        </p>
+                      )}
+                      {node.facilities && node.facilities.length > 0 && (
+                        <div className="mt-2">
+                          <p className="text-xs font-medium">Facilities:</p>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {node.facilities.map((facility, index) => (
+                              <span
+                                key={index}
+                                className="text-[10px] px-1.5 py-0.5 rounded capitalize font-medium"
+                                style={{
+                                  backgroundColor:
+                                    getTransportModeColor("lrt") + "20",
+                                  color: getTransportModeColor("lrt"),
+                                }}
+                              >
+                                {facility}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </Popup>
+                </Marker>
+              ))}
+
+              {/* Draw LRT routes */}
+              {lrtGraph.edges.map((edge, index) => {
+                const sourceNode = getNodeById(edge.source);
+                const targetNode = getNodeById(edge.target);
+
+                if (!sourceNode || !targetNode) return null;
+
+                const coords: [number, number][] = [
+                  [sourceNode.latitude, sourceNode.longitude],
+                  [targetNode.latitude, targetNode.longitude],
+                ];
+
+                return (
+                  <Polyline
+                    key={`lrt-edge-${index}`}
+                    positions={coords}
+                    color={edge.color || getTransportModeColor("lrt")}
+                    weight={4}
+                    opacity={0.7}
+                    className="lrt-route"
+                  >
+                    <Popup>
+                      <div className="p-2">
+                        <h3 className="text-xs font-medium">
+                          LRT {edge.routeNumber || ""}
+                        </h3>
+                        <p className="text-[10px] mt-1">
+                          From: {sourceNode.name}
+                        </p>
+                        <p className="text-[10px]">To: {targetNode.name}</p>
+                        <p className="text-[10px] mt-1">
+                          Distance: {edge.distance.toFixed(2)} km
+                        </p>
+                        <p className="text-[10px]">
+                          Travel time: {edge.weight} min
+                        </p>
+                        {edge.fare && (
+                          <p className="text-[10px]">
+                            Fare: Rp {edge.fare.toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                    </Popup>
+                  </Polyline>
+                );
+              })}
+            </LayerGroup>
+          </LayersControl.Overlay>
         </LayersControl>
 
         {/* Render all stations */}

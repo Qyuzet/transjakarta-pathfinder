@@ -3,10 +3,15 @@
 
 import { useState, useEffect } from "react";
 import {
+  combinedTransportGraph,
   transjakartaGraph,
-  getNodeById,
-  getAllStations,
-} from "@/lib/data/transjakarta-routes";
+  jaklingkoGraph,
+  mrtGraph,
+  krlGraph,
+  lrtGraph,
+  getTransportModeColor,
+} from "@/lib/data/combined-transport";
+import { Node } from "@/lib/utils";
 import {
   dijkstra,
   DijkstraResult,
@@ -83,13 +88,22 @@ export function RouteFinder() {
   const [selectedAlgorithm, setSelectedAlgorithm] = useState<
     "dijkstra" | "bfs" | "compare"
   >("dijkstra");
+  const [selectedTransportModes, setSelectedTransportModes] = useState<
+    string[]
+  >(["transjakarta"]);
 
   // Only render after component is mounted on client
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const stations = getAllStations();
+  // Get all stations from the combined graph
+  const stations = combinedTransportGraph.nodes;
+
+  // Helper function to get a node by ID from the combined graph
+  const getNodeById = (nodeId: string): Node | undefined => {
+    return combinedTransportGraph.nodes.find((node) => node.id === nodeId);
+  };
 
   const handleFindRoute = () => {
     if (!startNodeId || !endNodeId) return;
@@ -102,11 +116,11 @@ export function RouteFinder() {
       if (selectedAlgorithm === "compare") {
         // Run both algorithms and compare results
         const dijkstraResult = dijkstra(
-          transjakartaGraph,
+          combinedTransportGraph,
           startNodeId,
           endNodeId
         );
-        const bfsResult = bfs(transjakartaGraph, startNodeId, endNodeId);
+        const bfsResult = bfs(combinedTransportGraph, startNodeId, endNodeId);
 
         // Calculate comparison metrics
         const timeDifference = dijkstraResult.distance - bfsResult.distance;
@@ -166,9 +180,9 @@ export function RouteFinder() {
         // Run single algorithm
         let result;
         if (selectedAlgorithm === "dijkstra") {
-          result = dijkstra(transjakartaGraph, startNodeId, endNodeId);
+          result = dijkstra(combinedTransportGraph, startNodeId, endNodeId);
         } else {
-          result = bfs(transjakartaGraph, startNodeId, endNodeId);
+          result = bfs(combinedTransportGraph, startNodeId, endNodeId);
         }
         setResult(result);
         setComparisonResult(null); // Clear comparison result
@@ -177,19 +191,15 @@ export function RouteFinder() {
     }, 500);
   };
 
-  const getStationById = (id: string) => {
-    return stations.find((station) => station.id === id);
-  };
+  // Use getNodeById instead of getStationById
 
   const getRouteDetails = () => {
     if (result && result.path.length) {
       const totalStations = result.path.length;
-      const stationNames = result.path.map(
-        (id) => getStationById(id)?.name || id
-      );
+      const stationNames = result.path.map((id) => getNodeById(id)?.name || id);
       const totalTimeMinutes = result.distance;
-      const startStation = getStationById(result.path[0]);
-      const endStation = getStationById(result.path[result.path.length - 1]);
+      const startStation = getNodeById(result.path[0]);
+      const endStation = getNodeById(result.path[result.path.length - 1]);
 
       return {
         totalStations,
@@ -207,19 +217,17 @@ export function RouteFinder() {
       return {
         dijkstra: {
           totalStations: dijkstraPath.length,
-          stationNames: dijkstraPath.map(
-            (id) => getStationById(id)?.name || id
-          ),
+          stationNames: dijkstraPath.map((id) => getNodeById(id)?.name || id),
           totalTimeMinutes: comparisonResult.dijkstra.distance,
-          startStation: getStationById(dijkstraPath[0]),
-          endStation: getStationById(dijkstraPath[dijkstraPath.length - 1]),
+          startStation: getNodeById(dijkstraPath[0]),
+          endStation: getNodeById(dijkstraPath[dijkstraPath.length - 1]),
         },
         bfs: {
           totalStations: bfsPath.length,
-          stationNames: bfsPath.map((id) => getStationById(id)?.name || id),
+          stationNames: bfsPath.map((id) => getNodeById(id)?.name || id),
           totalTimeMinutes: comparisonResult.bfs.distance,
-          startStation: getStationById(bfsPath[0]),
-          endStation: getStationById(bfsPath[bfsPath.length - 1]),
+          startStation: getNodeById(bfsPath[0]),
+          endStation: getNodeById(bfsPath[bfsPath.length - 1]),
         },
         timeDifference: comparisonResult.timeDifference,
         pathLengthDifference: comparisonResult.pathLengthDifference,
@@ -265,8 +273,11 @@ export function RouteFinder() {
     <div className="container mx-auto p-4">
       {/* Simple title */}
       <h1 className="text-2xl font-bold mb-4 text-center lg:text-left">
-        TransJakarta Route Finder
+        Jabodetabek Public Transport Pathfinder
       </h1>
+      <p className="text-sm text-muted-foreground mb-4 text-center lg:text-left">
+        Find the best route using TransJakarta, JakLingko, MRT, KRL, and LRT
+      </p>
 
       {/* Main layout with integrated controls */}
       <div className="flex flex-col gap-4 h-[calc(100vh-150px)]">

@@ -6,6 +6,16 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export type TransportMode =
+  | "transjakarta"
+  | "jaklingko"
+  | "angkot"
+  | "mrt"
+  | "lrt"
+  | "krl"
+  | "bus"
+  | "mikrolet";
+
 export type Node = {
   id: string;
   name: string;
@@ -16,6 +26,8 @@ export type Node = {
   address?: string;
   facilities?: string[];
   isActive?: boolean;
+  transportModes?: TransportMode[];
+  routeNumbers?: string[];
 };
 
 export type Edge = {
@@ -27,6 +39,13 @@ export type Edge = {
   color?: string;
   routeNumber?: string;
   isActive?: boolean;
+  transportMode?: TransportMode;
+  fare?: number; // in IDR
+  frequency?: number; // in minutes between services
+  operatingHours?: {
+    start: string; // HH:MM format
+    end: string; // HH:MM format
+  };
 };
 
 export type Graph = {
