@@ -142,16 +142,22 @@ export function InteractiveMap({
     if (node.id === startNodeId) {
       return divIcon({
         className: "custom-div-icon",
-        html: `<div class="bus-stop-marker" style="background-color: #10b981;">A</div>`,
-        iconSize: [30, 30],
-        iconAnchor: [15, 15],
+        html: `<div class="bus-stop-marker" style="background-color: #10b981;">
+          <div class="marker-label">A</div>
+          <div class="marker-details">Start</div>
+        </div>`,
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
       });
     } else if (node.id === endNodeId) {
       return divIcon({
         className: "custom-div-icon",
-        html: `<div class="bus-stop-marker" style="background-color: #ef4444;">B</div>`,
-        iconSize: [30, 30],
-        iconAnchor: [15, 15],
+        html: `<div class="bus-stop-marker" style="background-color: #ef4444;">
+          <div class="marker-label">B</div>
+          <div class="marker-details">End</div>
+        </div>`,
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
       });
     }
 
@@ -161,33 +167,56 @@ export function InteractiveMap({
       ? getCorridorColor(node.corridor)
       : "#6366f1";
 
+    // Create a short name for the station (first letter of each word)
+    const shortName = node.name
+      .split(" ")
+      .map((word) => word.charAt(0))
+      .join("")
+      .substring(0, 2)
+      .toUpperCase();
+
+    // Create corridor label
+    const corridorLabel = node.corridor ? `C${node.corridor}` : "";
+
     // Create different icons based on station type
     if (stationType === "terminal") {
       return divIcon({
         className: "custom-div-icon",
         html: `<div class="bus-stop-marker" style="background-color: ${corridorColor}; border: 2px solid white;">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-terminal-square"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><path d="m7 15 3-3-3-3"/><path d="M17 15h-6"/></svg>
+          <div class="marker-label">${shortName}</div>
+          <div class="marker-details">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-terminal-square"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><path d="m7 15 3-3-3-3"/><path d="M17 15h-6"/></svg>
+            ${corridorLabel}
+          </div>
         </div>`,
-        iconSize: [30, 30],
-        iconAnchor: [15, 15],
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
       });
     } else if (stationType === "interchange") {
       return divIcon({
         className: "custom-div-icon",
         html: `<div class="bus-stop-marker" style="background-color: ${corridorColor}; border: 2px solid white;">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-git-merge"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 9v12"/><path d="m18 15-6-6"/></svg>
+          <div class="marker-label">${shortName}</div>
+          <div class="marker-details">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-git-merge"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 9v12"/><path d="m18 15-6-6"/></svg>
+            ${corridorLabel}
+          </div>
         </div>`,
-        iconSize: [30, 30],
-        iconAnchor: [15, 15],
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
       });
     } else {
       return divIcon({
         className: "custom-div-icon",
         html: `<div class="bus-stop-marker" style="background-color: ${corridorColor};">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bus"><path d="M8 6v6"/><path d="M16 6v6"/><path d="M2 12h20"/><path d="M18 18h2a2 2 0 0 0 2-2v-6a8 8 0 0 0-16 0v6a2 2 0 0 0 2 2h2"/><path d="M8 18v2"/><path d="M16 18v2"/></svg>
+          <div class="marker-label">${shortName}</div>
+          <div class="marker-details">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bus"><path d="M8 6v6"/><path d="M16 6v6"/><path d="M2 12h20"/><path d="M18 18h2a2 2 0 0 0 2-2v-6a8 8 0 0 0-16 0v6a2 2 0 0 0 2 2h2"/><path d="M8 18v2"/><path d="M16 18v2"/></svg>
+            ${corridorLabel}
+          </div>
         </div>`,
-        iconSize: [30, 30],
-        iconAnchor: [15, 15],
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
       });
     }
   };
@@ -336,32 +365,42 @@ export function InteractiveMap({
           </div>
           <div className="space-y-1">
             <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-[#10b981]"></div>
+              <div className="w-4 h-4 rounded-md bg-[#10b981] flex items-center justify-center text-white text-[8px] font-bold">
+                A
+              </div>
               <span>Start Station</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-[#ef4444]"></div>
+              <div className="w-4 h-4 rounded-md bg-[#ef4444] flex items-center justify-center text-white text-[8px] font-bold">
+                B
+              </div>
               <span>End Station</span>
             </div>
             <div className="flex items-center gap-1">
               <div
-                className="w-3 h-3 rounded-full border-2 border-white"
+                className="w-4 h-4 rounded-md border-2 border-white flex items-center justify-center text-white text-[8px] font-bold"
                 style={{ backgroundColor: getCorridorColor("1") }}
-              ></div>
+              >
+                T1
+              </div>
               <span>Terminal Station</span>
             </div>
             <div className="flex items-center gap-1">
               <div
-                className="w-3 h-3 rounded-full border-2 border-white"
+                className="w-4 h-4 rounded-md border-2 border-white flex items-center justify-center text-white text-[8px] font-bold"
                 style={{ backgroundColor: getCorridorColor("2") }}
-              ></div>
+              >
+                IC
+              </div>
               <span>Interchange Station</span>
             </div>
             <div className="flex items-center gap-1">
               <div
-                className="w-3 h-3 rounded-full"
+                className="w-4 h-4 rounded-md flex items-center justify-center text-white text-[8px] font-bold"
                 style={{ backgroundColor: getCorridorColor("3") }}
-              ></div>
+              >
+                RS
+              </div>
               <span>Regular Station</span>
             </div>
             <div className="mt-1 pt-1 border-t">
@@ -449,6 +488,28 @@ export function InteractiveMap({
                               <p className="text-xs text-muted-foreground mt-1">
                                 {node.address}
                               </p>
+                            )}
+                            {node.facilities && node.facilities.length > 0 && (
+                              <div className="mt-2">
+                                <p className="text-xs font-medium">
+                                  Facilities:
+                                </p>
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {node.facilities.map((facility, index) => (
+                                    <span
+                                      key={index}
+                                      className="text-[10px] px-1.5 py-0.5 rounded capitalize font-medium"
+                                      style={{
+                                        backgroundColor:
+                                          getCorridorColor(corridor) + "20",
+                                        color: getCorridorColor(corridor),
+                                      }}
+                                    >
+                                      {facility}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
                             )}
                           </div>
                         </Popup>
@@ -558,14 +619,24 @@ export function InteractiveMap({
                     <div className="mt-2">
                       <p className="text-xs font-medium">Facilities:</p>
                       <div className="flex flex-wrap gap-1 mt-1">
-                        {node.facilities.map((facility, index) => (
-                          <span
-                            key={index}
-                            className="text-[10px] bg-muted px-1.5 py-0.5 rounded capitalize"
-                          >
-                            {facility}
-                          </span>
-                        ))}
+                        {node.facilities.map((facility, index) => {
+                          // Use the corridor color for facility tags if available
+                          const color = node.corridor
+                            ? getCorridorColor(node.corridor)
+                            : "#6366f1";
+                          return (
+                            <span
+                              key={index}
+                              className="text-[10px] px-1.5 py-0.5 rounded capitalize font-medium"
+                              style={{
+                                backgroundColor: color + "20",
+                                color: color,
+                              }}
+                            >
+                              {facility}
+                            </span>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
