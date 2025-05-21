@@ -1,11 +1,12 @@
 // @ts-nocheck
-import { Graph, PriorityQueue } from "@/lib/utils";
+import { Graph, PriorityQueue, Edge } from "@/lib/utils";
 
 export type DijkstraStep = {
   currentNode: string;
   visitedNodes: string[];
   distances: Record<string, number>;
   previousNodes: Record<string, string | null>;
+  edges?: Edge[]; // Edges processed so far
 };
 
 export type DijkstraResult = {
@@ -19,6 +20,7 @@ export type DijkstraResult = {
   priorityQueueOperations: number;
   edgesProcessed: number;
   memoryUsageEstimate: number;
+  edges?: Edge[]; // Edges in the final path for corridor analysis
 };
 
 export function dijkstra(
@@ -99,10 +101,25 @@ export function dijkstra(
 
   // Reconstruct the shortest path
   const path: string[] = [];
+  const pathEdges: Edge[] = [];
   let current = endNodeId;
 
   while (current) {
     path.unshift(current);
+
+    // If we have a previous node, find the edge between them
+    const prev = previousNodes[current];
+    if (prev) {
+      const edge = graph.edges.find(
+        (e) =>
+          (e.source === prev && e.target === current) ||
+          (e.source === current && e.target === prev)
+      );
+      if (edge) {
+        pathEdges.unshift(edge);
+      }
+    }
+
     current = previousNodes[current] ?? "";
     if (!current) break;
   }
@@ -134,6 +151,7 @@ export function dijkstra(
     priorityQueueOperations,
     edgesProcessed,
     memoryUsageEstimate,
+    edges: pathEdges, // Include edges for corridor analysis
   };
 }
 

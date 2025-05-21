@@ -222,7 +222,14 @@ export function GraphVisualization({
       .enter()
       .append("line")
       .attr("class", (d) => `graph-edge ${getEdgeClassMemo(d)}`)
-      .attr("stroke-width", 2)
+      .attr("stroke-width", (d) => (d.corridor ? 3 : 2)) // Make corridor edges thicker
+      .attr("stroke", (d) => {
+        // Use corridor-specific colors if available
+        if (d.corridor && d.color) {
+          return d.color;
+        }
+        return null; // Use default color from CSS
+      })
       .on("mouseenter", (event, d) => setHoveredEdge(d))
       .on("mouseleave", () => setHoveredEdge(null));
 
@@ -249,7 +256,22 @@ export function GraphVisualization({
       .enter()
       .append("circle")
       .attr("class", (d) => `graph-node ${getNodeClassMemo(d.id)}`)
-      .attr("r", 15)
+      .attr("r", (d) => {
+        // Make terminal and interchange stations larger
+        if (d.stationType === "terminal") return 18;
+        if (d.stationType === "interchange") return 16;
+        return 14;
+      })
+      .attr("stroke", (d) => {
+        // Add corridor-specific border color
+        if (d.corridor) {
+          // Get the corridor color from the matching edge
+          const edge = edgesCopy.find((e) => e.corridor === d.corridor);
+          return edge?.color || null;
+        }
+        return null;
+      })
+      .attr("stroke-width", (d) => (d.corridor ? 3 : 1))
       .on("mouseenter", (event, d) => setHoveredNode(d.id))
       .on("mouseleave", () => setHoveredNode(null))
       .call(
@@ -432,13 +454,53 @@ export function GraphVisualization({
           style={{
             top: "10px",
             right: "10px",
-            maxWidth: "200px",
+            maxWidth: "250px",
           }}
         >
           <div className="font-medium mb-1">
             Node: {hoveredNode} -{" "}
             {visualizationNodes.find((n) => n.id === hoveredNode)?.name}
           </div>
+
+          {/* Station details */}
+          {(() => {
+            const node = visualizationNodes.find((n) => n.id === hoveredNode);
+            if (node?.corridor) {
+              return (
+                <div className="mb-2">
+                  <div
+                    className="text-xs font-medium px-1.5 py-0.5 rounded inline-block mb-1"
+                    style={{
+                      backgroundColor:
+                        (node.corridor &&
+                          edgesCopy.find((e) => e.corridor === node.corridor)
+                            ?.color + "20") ||
+                        "#6366f120",
+                      color:
+                        (node.corridor &&
+                          edgesCopy.find((e) => e.corridor === node.corridor)
+                            ?.color) ||
+                        "#6366f1",
+                    }}
+                  >
+                    Corridor {node.corridor}
+                  </div>
+                  {node.stationType && (
+                    <div className="text-xs capitalize">
+                      Type: {node.stationType}
+                    </div>
+                  )}
+                  {node.address && (
+                    <div className="text-xs text-muted-foreground mt-1 truncate">
+                      {node.address}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+            return null;
+          })()}
+
           <div className="grid grid-cols-2 gap-x-2 gap-y-1">
             <div>Status:</div>
             <div className="font-medium">
@@ -458,6 +520,31 @@ export function GraphVisualization({
             <div className="font-medium">
               {getPreviousNode(hoveredNode) || "-"}
             </div>
+
+            {/* Facilities if available */}
+            {(() => {
+              const node = visualizationNodes.find((n) => n.id === hoveredNode);
+              if (node?.facilities && node.facilities.length > 0) {
+                return (
+                  <>
+                    <div className="col-span-2 mt-1 pt-1 border-t">
+                      Facilities:
+                    </div>
+                    <div className="col-span-2 flex flex-wrap gap-1">
+                      {node.facilities.map((facility, index) => (
+                        <span
+                          key={index}
+                          className="text-[10px] bg-muted px-1.5 py-0.5 rounded capitalize"
+                        >
+                          {facility}
+                        </span>
+                      ))}
+                    </div>
+                  </>
+                );
+              }
+              return null;
+            })()}
           </div>
         </div>
       )}
@@ -469,15 +556,34 @@ export function GraphVisualization({
           style={{
             bottom: "10px",
             right: "10px",
-            maxWidth: "200px",
+            maxWidth: "250px",
           }}
         >
           <div className="font-medium mb-1">
             Edge: {hoveredEdge.source} → {hoveredEdge.target}
           </div>
+
+          {/* Corridor information */}
+          {hoveredEdge.corridor && (
+            <div
+              className="text-xs font-medium px-1.5 py-0.5 rounded inline-block mb-2"
+              style={{
+                backgroundColor: hoveredEdge.color + "20" || "#6366f120",
+                color: hoveredEdge.color || "#6366f1",
+              }}
+            >
+              Corridor {hoveredEdge.corridor}
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-x-2 gap-y-1">
             <div>Weight:</div>
             <div className="font-medium">{hoveredEdge.weight} minutes</div>
+
+            <div>Distance:</div>
+            <div className="font-medium">
+              {hoveredEdge.distance.toFixed(2)} km
+            </div>
 
             <div>Status:</div>
             <div className="font-medium">
@@ -490,6 +596,25 @@ export function GraphVisualization({
                 : getEdgeClass(hoveredEdge) === "edge-frontier"
                 ? "Frontier"
                 : "Unvisited"}
+            </div>
+
+            {/* Station names */}
+            <div className="col-span-2 mt-1 pt-1 border-t">Stations:</div>
+            <div className="col-span-2 grid grid-cols-2 gap-1">
+              <div className="flex flex-col">
+                <span className="text-[10px] text-muted-foreground">From:</span>
+                <span className="font-medium">
+                  {visualizationNodes.find((n) => n.id === hoveredEdge.source)
+                    ?.name || hoveredEdge.source}
+                </span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[10px] text-muted-foreground">To:</span>
+                <span className="font-medium">
+                  {visualizationNodes.find((n) => n.id === hoveredEdge.target)
+                    ?.name || hoveredEdge.target}
+                </span>
+              </div>
             </div>
           </div>
         </div>

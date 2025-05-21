@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { Graph } from "@/lib/utils";
+import { Graph, Edge } from "@/lib/utils";
 
 export type BFSStep = {
   currentNode: string;
@@ -7,6 +7,7 @@ export type BFSStep = {
   distances: Record<string, number>;
   previousNodes: Record<string, string | null>;
   queue: string[];
+  edges?: Edge[]; // Edges processed so far
 };
 
 export type BFSResult = {
@@ -20,6 +21,7 @@ export type BFSResult = {
   queueOperations: number;
   edgesProcessed: number;
   memoryUsageEstimate: number;
+  edges?: Edge[]; // Edges in the final path for corridor analysis
 };
 
 export function bfs(
@@ -109,10 +111,25 @@ export function bfs(
 
   // Reconstruct the shortest path
   const path: string[] = [];
+  const pathEdges: Edge[] = [];
   let current = endNodeId;
 
   while (current) {
     path.unshift(current);
+
+    // If we have a previous node, find the edge between them
+    const prev = previousNodes[current];
+    if (prev) {
+      const edge = graph.edges.find(
+        (e) =>
+          (e.source === prev && e.target === current) ||
+          (e.source === current && e.target === prev)
+      );
+      if (edge) {
+        pathEdges.unshift(edge);
+      }
+    }
+
     current = previousNodes[current] ?? "";
     if (!current) break;
   }
@@ -143,6 +160,7 @@ export function bfs(
     queueOperations,
     edgesProcessed,
     memoryUsageEstimate,
+    edges: pathEdges, // Include edges for corridor analysis
   };
 }
 

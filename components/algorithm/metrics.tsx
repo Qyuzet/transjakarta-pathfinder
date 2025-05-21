@@ -73,7 +73,7 @@ export function AlgorithmMetrics({ result }: MetricsProps) {
 
       {/* Tabs for additional details */}
       <Tabs defaultValue="chart" className="w-full">
-        <TabsList className="w-full grid grid-cols-3 h-8">
+        <TabsList className="w-full grid grid-cols-4 h-8">
           <TabsTrigger value="chart" className="text-xs">
             Chart
           </TabsTrigger>
@@ -82,6 +82,9 @@ export function AlgorithmMetrics({ result }: MetricsProps) {
           </TabsTrigger>
           <TabsTrigger value="features" className="text-xs">
             Features
+          </TabsTrigger>
+          <TabsTrigger value="corridors" className="text-xs">
+            Corridors
           </TabsTrigger>
         </TabsList>
 
@@ -216,6 +219,154 @@ export function AlgorithmMetrics({ result }: MetricsProps) {
                   </div>
                 </>
               )}
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Corridors tab */}
+        <TabsContent value="corridors" className="mt-2 p-0">
+          <div className="border rounded-md p-2">
+            <div className="text-xs font-medium mb-2">Corridor Analysis</div>
+
+            {/* Corridor breakdown */}
+            <div className="space-y-2">
+              {(() => {
+                // Count corridors in the path
+                const corridorCounts = {};
+                const corridorSegments = [];
+
+                // Get nodes from the path
+                const pathNodes = result.path;
+
+                // Analyze path for corridor segments
+                for (let i = 0; i < pathNodes.length - 1; i++) {
+                  const sourceId = pathNodes[i];
+                  const targetId = pathNodes[i + 1];
+
+                  // Find the edge between these nodes
+                  const edge = result.steps[
+                    result.steps.length - 1
+                  ]?.edges?.find(
+                    (e) =>
+                      (e.source === sourceId && e.target === targetId) ||
+                      (e.source === targetId && e.target === sourceId)
+                  );
+
+                  if (edge?.corridor) {
+                    // Count corridors
+                    corridorCounts[edge.corridor] =
+                      (corridorCounts[edge.corridor] || 0) + 1;
+
+                    // Track corridor segments
+                    if (
+                      corridorSegments.length === 0 ||
+                      corridorSegments[corridorSegments.length - 1].corridor !==
+                        edge.corridor
+                    ) {
+                      corridorSegments.push({
+                        corridor: edge.corridor,
+                        start: sourceId,
+                        stations: [sourceId, targetId],
+                      });
+                    } else {
+                      // Add to existing segment
+                      if (
+                        !corridorSegments[
+                          corridorSegments.length - 1
+                        ].stations.includes(targetId)
+                      ) {
+                        corridorSegments[
+                          corridorSegments.length - 1
+                        ].stations.push(targetId);
+                      }
+                    }
+                  }
+                }
+
+                // Get corridor colors
+                const corridorColors = {
+                  "1": "#d32f2f", // Red
+                  "2": "#1976d2", // Blue
+                  "3": "#388e3c", // Green
+                  "4": "#ffa000", // Amber
+                  "5": "#7b1fa2", // Purple
+                  "6": "#c2185b", // Pink
+                  "7": "#0097a7", // Cyan
+                  "8": "#f57c00", // Orange
+                  "9": "#5d4037", // Brown
+                  "10": "#455a64", // Blue Grey
+                  B1: "#009688", // Teal
+                  T1: "#ff5722", // Deep Orange
+                  D1: "#795548", // Brown
+                  C1: "#607d8b", // Blue Grey
+                };
+
+                // If no corridors found
+                if (Object.keys(corridorCounts).length === 0) {
+                  return (
+                    <div className="text-xs text-muted-foreground text-center py-4">
+                      No corridor information available for this path
+                    </div>
+                  );
+                }
+
+                return (
+                  <>
+                    {/* Corridor segments */}
+                    <div className="space-y-1 mb-3">
+                      <div className="text-xs font-medium">Route Segments:</div>
+                      {corridorSegments.map((segment, index) => (
+                        <div
+                          key={index}
+                          className="text-xs p-1.5 rounded flex items-center gap-2"
+                          style={{
+                            backgroundColor:
+                              corridorColors[segment.corridor] + "15",
+                          }}
+                        >
+                          <div
+                            className="w-3 h-3 rounded-full flex-shrink-0"
+                            style={{
+                              backgroundColor: corridorColors[segment.corridor],
+                            }}
+                          ></div>
+                          <div>
+                            <span className="font-medium">
+                              Corridor {segment.corridor}
+                            </span>
+                            <span className="text-[10px] ml-1 text-muted-foreground">
+                              ({segment.stations.length - 1} stops)
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Corridor statistics */}
+                    <div className="text-xs font-medium mb-1">
+                      Corridor Statistics:
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-muted/20 rounded p-2 text-center">
+                        <div className="text-[10px] text-muted-foreground mb-1">
+                          Corridors Used
+                        </div>
+                        <div className="text-lg font-bold">
+                          {Object.keys(corridorCounts).length}
+                        </div>
+                      </div>
+                      <div className="bg-muted/20 rounded p-2 text-center">
+                        <div className="text-[10px] text-muted-foreground mb-1">
+                          Transfers
+                        </div>
+                        <div className="text-lg font-bold">
+                          {Math.max(0, corridorSegments.length - 1)}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
         </TabsContent>

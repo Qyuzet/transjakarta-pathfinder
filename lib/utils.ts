@@ -11,6 +11,11 @@ export type Node = {
   name: string;
   latitude: number;
   longitude: number;
+  corridor?: string;
+  stationType?: "terminal" | "interchange" | "regular";
+  address?: string;
+  facilities?: string[];
+  isActive?: boolean;
 };
 
 export type Edge = {
@@ -18,6 +23,10 @@ export type Edge = {
   target: string;
   weight: number; // in minutes
   distance: number; // in kilometers
+  corridor?: string;
+  color?: string;
+  routeNumber?: string;
+  isActive?: boolean;
 };
 
 export type Graph = {

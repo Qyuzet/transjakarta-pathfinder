@@ -145,7 +145,16 @@
   }
 
   .bus-stop-marker {
-    @apply bg-primary text-white rounded-full p-2 border-2 border-white shadow-md;
+    @apply text-white rounded-full p-2 border-2 border-white shadow-md flex items-center justify-center;
+    width: 30px;
+    height: 30px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s ease;
+  }
+
+  .bus-stop-marker:hover {
+    transform: scale(1.1);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
   }
 
   .station-card {
@@ -204,5 +213,26 @@
   .graph-edge.edge-path {
     @apply stroke-[hsl(var(--path-node))] stroke-[3px];
     stroke-dasharray: 5, 3;
+  }
+
+  /* TransJakarta corridor styles */
+  .corridor-route {
+    transition: all 0.3s ease;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .corridor-route:hover {
+    opacity: 1 !important;
+    stroke-width: 6px;
+  }
+
+  .corridor-station {
+    transition: all 0.3s ease;
+  }
+
+  .corridor-station:hover {
+    transform: scale(1.2);
+    z-index: 1000 !important;
   }
 }
