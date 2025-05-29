@@ -1,4 +1,4 @@
-# TransJakarta Pathfinder: Algorithm Analysis Project
+# TransJakarta Pathfinder: Algorithm Analysis Project.
 
 ## Project Overview
 
