@@ -105,33 +105,39 @@ export default function AlgorithmPage() {
             </Card>
           </div>
 
-              <div className="my-6">
-                <h3 className="text-lg font-medium mb-2">
-                  Key Steps of the Algorithm
-                </h3>
-                <ol className="list-decimal list-inside space-y-2">
-                  <li>
-                    Initialize distances of all vertices as infinite and
-                    distance of source vertex as 0
-                  </li>
-                  <li>Create a set of all unvisited vertices</li>
-                  <li>
-                    While the set is not empty:
-                    <ul className="list-disc list-inside ml-6 mt-1">
-                      <li>
-                        Select the vertex with minimum distance from the set
-                      </li>
-                      <li>Remove it from the unvisited set</li>
-                      <li>Update distances of its adjacent vertices</li>
-                    </ul>
-                  </li>
-                </ol>
-              </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Algorithm Fundamentals</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-medium mb-2">
+                    Key Steps of the Algorithm
+                  </h3>
+                  <ol className="list-decimal list-inside space-y-2">
+                    <li>
+                      Initialize distances of all vertices as infinite and
+                      distance of source vertex as 0
+                    </li>
+                    <li>Create a set of all unvisited vertices</li>
+                    <li>
+                      While the set is not empty:
+                      <ul className="list-disc list-inside ml-6 mt-1">
+                        <li>
+                          Select the vertex with minimum distance from the set
+                        </li>
+                        <li>Remove it from the unvisited set</li>
+                        <li>Update distances of its adjacent vertices</li>
+                      </ul>
+                    </li>
+                  </ol>
+                </div>
 
-              <div className="mt-6">
-                <h3 className="text-lg font-medium mb-2">Pseudocode</h3>
-                <pre className="bg-muted p-4 rounded-md overflow-x-auto">
-                  <code>{`function Dijkstra(Graph, source):
+                <div>
+                  <h3 className="text-lg font-medium mb-2">Pseudocode</h3>
+                  <pre className="bg-muted p-4 rounded-md overflow-x-auto">
+                    <code>{`function Dijkstra(Graph, source):
     dist[source] ← 0                   // Distance from source to source
     for each vertex v in Graph:        // Initialization
         if v ≠ source
@@ -156,7 +162,8 @@ export default function AlgorithmPage() {
 
     return dist[], prev[]
 end function`}</code>
-                </pre>
+                  </pre>
+                </div>
               </div>
             </CardContent>
           </Card>
