@@ -14,7 +14,8 @@ export type TransportMode =
   | "lrt"
   | "krl"
   | "bus"
-  | "mikrolet";
+  | "mikrolet"
+  | "transfer";
 
 export type Node = {
   id: string;
@@ -45,6 +46,13 @@ export type Edge = {
   operatingHours?: {
     start: string; // HH:MM format
     end: string; // HH:MM format
+  };
+  // OSRM-specific properties for realistic routing
+  osrmRoute?: {
+    geometry: [number, number][]; // Array of [lng, lat] coordinates for the route
+    duration: number; // Duration in seconds from OSRM
+    distance: number; // Distance in meters from OSRM
+    steps?: OSRMStep[]; // Turn-by-turn instructions
   };
 };
 
@@ -94,3 +102,63 @@ export function calculateDistance(
 function deg2rad(deg: number): number {
   return deg * (Math.PI / 180);
 }
+
+// OSRM-related types for realistic routing
+export type OSRMStep = {
+  geometry: [number, number][];
+  maneuver: {
+    type: string;
+    instruction: string;
+    bearing_after?: number;
+    bearing_before?: number;
+    location: [number, number];
+  };
+  mode: string;
+  driving_side: string;
+  name: string;
+  intersections: any[];
+  weight: number;
+  duration: number;
+  distance: number;
+};
+
+export type OSRMResponse = {
+  code: string;
+  routes: {
+    geometry: string; // Encoded polyline
+    legs: {
+      steps: OSRMStep[];
+      summary: string;
+      weight: number;
+      duration: number;
+      distance: number;
+    }[];
+    weight_name: string;
+    weight: number;
+    duration: number;
+    distance: number;
+  }[];
+  waypoints: {
+    hint: string;
+    distance: number;
+    name: string;
+    location: [number, number];
+  }[];
+};
+
+export type RouteSegment = {
+  coordinates: [number, number][];
+  transportMode: TransportMode;
+  routeInfo: {
+    name: string;
+    color: string;
+    routeNumber?: string;
+    corridor?: string;
+  };
+  duration: number; // in minutes
+  distance: number; // in kilometers
+  instructions?: string[];
+};
+
+// Routing mode type for toggle
+export type RoutingMode = "straight-line" | "osrm-realistic";

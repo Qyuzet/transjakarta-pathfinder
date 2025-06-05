@@ -29,6 +29,8 @@ type VisualizationProps = {
   path: string[];
   graph: Graph;
   algorithmName?: "dijkstra" | "bfs";
+  osrmData?: Map<string, any> | null;
+  routingMode?: "straight-line" | "osrm-realistic";
 };
 
 export function AnimatedAlgorithmSteps({
@@ -36,6 +38,8 @@ export function AnimatedAlgorithmSteps({
   path,
   graph,
   algorithmName = "dijkstra",
+  osrmData = null,
+  routingMode = "straight-line",
 }: VisualizationProps) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -117,7 +121,14 @@ export function AnimatedAlgorithmSteps({
   const getNodeDistance = (nodeId: string) => {
     if (!currentStep) return "Infinity";
     const distance = currentStep.distances[nodeId];
-    return distance === Infinity ? "∞" : distance.toString();
+    const displayDistance = distance === Infinity ? "∞" : distance.toFixed(1);
+
+    // Add OSRM indicator if in OSRM mode
+    if (routingMode === "osrm-realistic" && distance !== Infinity && osrmData) {
+      return `${displayDistance}m (OSRM)`;
+    }
+
+    return `${displayDistance}m`;
   };
 
   // Given a simplified visualization of nodes and edges
@@ -244,6 +255,8 @@ export function AnimatedAlgorithmSteps({
             graph={graph}
             currentStepIndex={currentStepIndex}
             algorithmName={algorithmName}
+            osrmData={osrmData}
+            routingMode={routingMode}
           />
 
           {/* Tip */}

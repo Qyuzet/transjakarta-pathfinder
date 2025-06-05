@@ -2,6 +2,7 @@
 // @ts-nocheck
 
 import React, { useEffect, useState } from "react";
+import "leaflet/dist/leaflet.css";
 import {
   MapContainer,
   TileLayer,
@@ -25,9 +26,9 @@ import {
   getCorridorColor,
 } from "@/lib/data/combined-transport";
 
-import { Node, Edge, TransportMode } from "@/lib/utils";
+import { Node, Edge, TransportMode, RoutingMode, RouteSegment } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Bus, Map, X, Train, Car } from "lucide-react";
+import { Bus, Map, X, Train, Car, Route, MapPin } from "lucide-react";
 
 // Using getCorridorColor imported from combined-transport.ts
 
@@ -42,6 +43,9 @@ type MapProps = {
   comparisonMode?: boolean;
   dijkstraPath?: string[];
   bfsPath?: string[];
+  routingMode?: RoutingMode;
+  routeSegments?: RouteSegment[];
+  routeMetrics?: any;
 };
 
 // Helper function to get a node by ID from the combined graph
@@ -125,6 +129,9 @@ export function InteractiveMap({
   comparisonMode = false,
   dijkstraPath = [],
   bfsPath = [],
+  routingMode = "straight-line",
+  routeSegments = [],
+  routeMetrics = null,
 }: MapProps) {
   const [showLegend, setShowLegend] = useState(false);
   // Get path coordinates for the polyline
@@ -270,7 +277,67 @@ export function InteractiveMap({
 
   // Using getCorridorColor from the imports
 
-  // Function to render transport-specific route segments
+  // Function to render enhanced route segments (OSRM or straight-line)
+  const renderEnhancedRouteSegments = () => {
+    if (!routeSegments || routeSegments.length === 0) {
+      console.log("No route segments to render");
+      return null;
+    }
+
+    console.log("Rendering enhanced route segments:", routeSegments.length, "segments");
+    console.log("Routing mode:", routingMode);
+    console.log("First segment coordinates:", routeSegments[0]?.coordinates?.length, "points");
+
+    return (
+      <>
+        {routeSegments.map((segment, index) => (
+          <Polyline
+            key={`enhanced-segment-${index}`}
+            positions={segment.coordinates}
+            color={segment.routeInfo.color}
+            weight={routingMode === "osrm-realistic" ? 6 : 5}
+            opacity={0.9}
+            dashArray={segment.routeInfo.routeNumber === "Transfer" ? "10,5" : ""}
+            className="enhanced-route"
+          >
+            <Popup>
+              <div className="p-2">
+                <h3 className="text-xs font-medium">
+                  {segment.routeInfo.name}
+                </h3>
+                <p className="text-[10px] mt-1">
+                  Mode: {routingMode === "osrm-realistic" ? "Realistic Roads" : "Straight Line"}
+                </p>
+                <p className="text-[10px]">
+                  Duration: {segment.duration.toFixed(1)} minutes
+                </p>
+                <p className="text-[10px]">
+                  Distance: {segment.distance.toFixed(2)} km
+                </p>
+                {segment.instructions && segment.instructions.length > 0 && (
+                  <div className="mt-1">
+                    <p className="text-[10px] font-medium">Instructions:</p>
+                    {segment.instructions.slice(0, 3).map((instruction, idx) => (
+                      <p key={idx} className="text-[9px] text-muted-foreground">
+                        • {instruction}
+                      </p>
+                    ))}
+                    {segment.instructions.length > 3 && (
+                      <p className="text-[9px] text-muted-foreground">
+                        ... and {segment.instructions.length - 3} more
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </Popup>
+          </Polyline>
+        ))}
+      </>
+    );
+  };
+
+  // Function to render transport-specific route segments (fallback for straight-line)
   const renderCorridorSpecificRoutes = (path: string[]) => {
     if (path.length < 2) return null;
 
@@ -480,6 +547,32 @@ export function InteractiveMap({
               </div>
               <span>Regular Station</span>
             </div>
+          </div>
+
+          {/* Routing Mode */}
+          <div className="mt-2 pt-1 border-t">
+            <h5 className="font-medium text-[10px] uppercase mt-1 mb-1">
+              Routing Mode
+            </h5>
+            <div className="flex items-center gap-1">
+              {routingMode === "osrm-realistic" ? (
+                <>
+                  <Route className="h-3 w-3 text-green-600" />
+                  <span className="text-green-600">Realistic Roads (OSRM)</span>
+                </>
+              ) : (
+                <>
+                  <MapPin className="h-3 w-3 text-blue-600" />
+                  <span className="text-blue-600">Straight Line</span>
+                </>
+              )}
+            </div>
+            {routeMetrics && (
+              <div className="mt-1 text-[9px] text-muted-foreground">
+                <p>Total: {routeMetrics.totalDuration.toFixed(1)}min, {routeMetrics.totalDistance.toFixed(2)}km</p>
+                <p>Segments: {routeMetrics.segmentCount}</p>
+              </div>
+            )}
           </div>
 
           {/* Transport Modes */}
@@ -1235,42 +1328,106 @@ export function InteractiveMap({
         {comparisonMode ? (
           // Draw both paths in comparison mode with different styles
           <>
-            {dijkstraCoordinates.length > 1 && (
-              <Polyline
-                positions={dijkstraCoordinates}
-                color="#ef4444" // Red for Dijkstra
-                weight={5}
-                opacity={0.8}
-                dashArray="10,10"
-              />
-            )}
-            {bfsCoordinates.length > 1 && (
-              <Polyline
-                positions={bfsCoordinates}
-                color="#3b82f6" // Blue for BFS
-                weight={5}
-                opacity={0.8}
-                dashArray="5,5"
-              />
+            {/* Use enhanced route segments for comparison mode if available */}
+            {routeSegments && routeSegments.length > 0 ? (
+              // Render enhanced segments for Dijkstra path (comparison mode uses Dijkstra path)
+              <>
+                {routeSegments.map((segment, index) => (
+                  <Polyline
+                    key={`comparison-enhanced-segment-${index}`}
+                    positions={segment.coordinates}
+                    color="#ef4444" // Red for Dijkstra in comparison
+                    weight={routingMode === "osrm-realistic" ? 6 : 5}
+                    opacity={0.9}
+                    dashArray="10,5"
+                    className="enhanced-route-comparison"
+                  >
+                    <Popup>
+                      <div className="p-2">
+                        <h3 className="text-xs font-medium text-red-600">
+                          Dijkstra: {segment.routeInfo.name}
+                        </h3>
+                        <p className="text-[10px] mt-1">
+                          Mode: {routingMode === "osrm-realistic" ? "Realistic Roads" : "Straight Line"}
+                        </p>
+                        <p className="text-[10px]">
+                          Duration: {segment.duration.toFixed(1)} minutes
+                        </p>
+                        <p className="text-[10px]">
+                          Distance: {segment.distance.toFixed(2)} km
+                        </p>
+                      </div>
+                    </Popup>
+                  </Polyline>
+                ))}
+                {/* BFS path as simple line */}
+                {bfsCoordinates.length > 1 && (
+                  <Polyline
+                    positions={bfsCoordinates}
+                    color="#3b82f6" // Blue for BFS
+                    weight={5}
+                    opacity={0.8}
+                    dashArray="5,5"
+                  >
+                    <Popup>
+                      <div className="p-2">
+                        <h3 className="text-xs font-medium text-blue-600">
+                          BFS Path (Straight Line)
+                        </h3>
+                        <p className="text-[10px] mt-1">
+                          Fewest stations route
+                        </p>
+                      </div>
+                    </Popup>
+                  </Polyline>
+                )}
+              </>
+            ) : (
+              // Fallback to simple lines for comparison
+              <>
+                {dijkstraCoordinates.length > 1 && (
+                  <Polyline
+                    positions={dijkstraCoordinates}
+                    color="#ef4444" // Red for Dijkstra
+                    weight={5}
+                    opacity={0.8}
+                    dashArray="10,10"
+                  />
+                )}
+                {bfsCoordinates.length > 1 && (
+                  <Polyline
+                    positions={bfsCoordinates}
+                    color="#3b82f6" // Blue for BFS
+                    weight={5}
+                    opacity={0.8}
+                    dashArray="5,5"
+                  />
+                )}
+              </>
             )}
           </>
         ) : (
-          // Draw single algorithm path with corridor-specific styling
+          // Draw single algorithm path with enhanced or corridor-specific styling
           <>
             {pathCoordinates.length > 1 && (
               <>
-                {/* Draw route with corridor-specific colors */}
-                {selectedPath.length > 1 &&
-                  renderCorridorSpecificRoutes(selectedPath)}
+                {/* Use enhanced route segments if available, otherwise fallback to corridor-specific */}
+                {routeSegments && routeSegments.length > 0 ? (
+                  renderEnhancedRouteSegments()
+                ) : (
+                  selectedPath.length > 1 && renderCorridorSpecificRoutes(selectedPath)
+                )}
 
-                {/* Draw the overall path with a subtle outline for clarity */}
-                <Polyline
-                  positions={pathCoordinates}
-                  color="#000000"
-                  weight={7}
-                  opacity={0.2}
-                  dashArray="10,10"
-                />
+                {/* Draw the overall path with a subtle outline for clarity (only for straight-line mode) */}
+                {routingMode === "straight-line" && !routeSegments?.length && (
+                  <Polyline
+                    positions={pathCoordinates}
+                    color="#000000"
+                    weight={7}
+                    opacity={0.2}
+                    dashArray="10,10"
+                  />
+                )}
               </>
             )}
           </>

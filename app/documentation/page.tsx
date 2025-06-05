@@ -8,11 +8,23 @@ export default function DocumentationPage() {
     <div className="container mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6">Project Documentation</h1>
 
+      <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+          <h2 className="text-lg font-semibold text-green-800">Enhanced with OSRM Integration</h2>
+        </div>
+        <p className="text-green-700 text-sm">
+          This project now features realistic road-based routing through OSRM integration,
+          bridging the gap between theoretical algorithms and real-world navigation systems.
+        </p>
+      </div>
+
       <Tabs defaultValue="overview">
-        <TabsList className="w-full grid grid-cols-4">
+        <TabsList className="w-full grid grid-cols-5">
           <TabsTrigger value="overview">Project Overview</TabsTrigger>
+          <TabsTrigger value="features">Features</TabsTrigger>
           <TabsTrigger value="technical">Technical Details</TabsTrigger>
-          <TabsTrigger value="algorithm">Algorithm Implementation</TabsTrigger>
+          <TabsTrigger value="algorithm">Implementation</TabsTrigger>
           <TabsTrigger value="usage">Usage Guide</TabsTrigger>
         </TabsList>
 
@@ -23,12 +35,21 @@ export default function DocumentationPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p>
-                This project is an educational platform that demonstrates the
-                application of Dijkstra&apos;s algorithm for finding the most
-                cost-efficient bus routes on the TransJakarta network in
-                Jakarta, Indonesia. It was developed as an assignment for the
-                Algorithm Design and Analysis subject.
+                This project is an advanced educational platform that demonstrates
+                pathfinding algorithms in real-world transportation networks. It features
+                both theoretical algorithm analysis and practical OSRM (Open Source Routing Machine)
+                integration for realistic road-based routing across Jakarta's multi-modal
+                public transport system including TransJakarta, MRT, LRT, KRL, and JakLingko.
               </p>
+
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h4 className="font-semibold text-blue-800 mb-2">🚀 Latest Enhancement: OSRM Integration</h4>
+                <p className="text-sm text-blue-700">
+                  Experience the evolution from theoretical algorithms to production-ready routing!
+                  Our enhanced system now provides realistic road-based navigation with turn-by-turn
+                  instructions, making it suitable for real-world applications.
+                </p>
+              </div>
 
               <div className="mt-4">
                 <h3 className="text-lg font-medium mb-2">Key Features</h3>
@@ -158,6 +179,127 @@ export default function DocumentationPage() {
                       <strong>TypeScript:</strong> Type-safe JavaScript
                     </li>
                   </ul>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="features" className="space-y-6 mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Core Features</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="font-semibold text-red-600 mb-3">🔴 Algorithm Features</h4>
+                  <ul className="space-y-2 text-sm">
+                    <li className="flex items-start">
+                      <Check className="h-4 w-4 text-green-500 mr-2 mt-0.5" />
+                      <span><strong>Dijkstra's Algorithm:</strong> Optimal pathfinding by travel time</span>
+                    </li>
+                    <li className="flex items-start">
+                      <Check className="h-4 w-4 text-green-500 mr-2 mt-0.5" />
+                      <span><strong>Breadth-First Search:</strong> Minimum station count routing</span>
+                    </li>
+                    <li className="flex items-start">
+                      <Check className="h-4 w-4 text-green-500 mr-2 mt-0.5" />
+                      <span><strong>Algorithm Comparison:</strong> Side-by-side performance analysis</span>
+                    </li>
+                    <li className="flex items-start">
+                      <Check className="h-4 w-4 text-green-500 mr-2 mt-0.5" />
+                      <span><strong>Step Visualization:</strong> Interactive algorithm execution</span>
+                    </li>
+                    <li className="flex items-start">
+                      <Check className="h-4 w-4 text-green-500 mr-2 mt-0.5" />
+                      <span><strong>Performance Metrics:</strong> Detailed complexity analysis</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold text-green-600 mb-3">🟢 OSRM Features</h4>
+                  <ul className="space-y-2 text-sm">
+                    <li className="flex items-start">
+                      <Check className="h-4 w-4 text-green-500 mr-2 mt-0.5" />
+                      <span><strong>Realistic Routing:</strong> Actual road-based pathfinding</span>
+                    </li>
+                    <li className="flex items-start">
+                      <Check className="h-4 w-4 text-green-500 mr-2 mt-0.5" />
+                      <span><strong>Turn Instructions:</strong> Step-by-step navigation</span>
+                    </li>
+                    <li className="flex items-start">
+                      <Check className="h-4 w-4 text-green-500 mr-2 mt-0.5" />
+                      <span><strong>Route Geometry:</strong> GPS-accurate coordinates</span>
+                    </li>
+                    <li className="flex items-start">
+                      <Check className="h-4 w-4 text-green-500 mr-2 mt-0.5" />
+                      <span><strong>Enhanced Algorithms:</strong> OSRM-weighted pathfinding</span>
+                    </li>
+                    <li className="flex items-start">
+                      <Check className="h-4 w-4 text-green-500 mr-2 mt-0.5" />
+                      <span><strong>Smart Caching:</strong> Optimized API performance</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Multi-Modal Transport Integration</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="text-center p-4 border rounded-lg">
+                  <div className="text-2xl mb-2">🚌</div>
+                  <h4 className="font-semibold mb-1">TransJakarta</h4>
+                  <p className="text-xs text-muted-foreground">Bus Rapid Transit system with dedicated corridors</p>
+                </div>
+
+                <div className="text-center p-4 border rounded-lg">
+                  <div className="text-2xl mb-2">🚇</div>
+                  <h4 className="font-semibold mb-1">MRT & LRT</h4>
+                  <p className="text-xs text-muted-foreground">Modern rail transit for efficient urban mobility</p>
+                </div>
+
+                <div className="text-center p-4 border rounded-lg">
+                  <div className="text-2xl mb-2">🚂</div>
+                  <h4 className="font-semibold mb-1">KRL & JakLingko</h4>
+                  <p className="text-xs text-muted-foreground">Commuter rail and integrated transport network</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Visualization & Analysis Tools</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h4 className="font-semibold text-blue-800 mb-2">📊 Interactive Visualizations</h4>
+                    <ul className="text-sm text-blue-700 space-y-1">
+                      <li>• Graph view with D3.js force simulation</li>
+                      <li>• List view with detailed node information</li>
+                      <li>• Geographic map with Leaflet integration</li>
+                      <li>• Real-time algorithm step animation</li>
+                    </ul>
+                  </div>
+
+                  <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                    <h4 className="font-semibold text-purple-800 mb-2">📈 Performance Analytics</h4>
+                    <ul className="text-sm text-purple-700 space-y-1">
+                      <li>• Time and space complexity analysis</li>
+                      <li>• Algorithm comparison metrics</li>
+                      <li>• OSRM vs traditional routing comparison</li>
+                      <li>• Interactive performance charts</li>
+                    </ul>
+                  </div>
                 </div>
               </div>
             </CardContent>

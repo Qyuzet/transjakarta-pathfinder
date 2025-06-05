@@ -11,39 +11,99 @@ export default function AlgorithmPage() {
   return (
     <div className="container mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6">
-        Dijkstra&apos;s Algorithm Analysis
+        Pathfinding Algorithm Analysis
       </h1>
 
+      <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+          <h2 className="text-lg font-semibold text-green-800">New: OSRM Integration</h2>
+        </div>
+        <p className="text-green-700 text-sm">
+          Our algorithms now integrate with OSRM (Open Source Routing Machine) for realistic road-based routing.
+          Experience the difference between theoretical pathfinding and real-world navigation!
+        </p>
+      </div>
+
       <Tabs defaultValue="overview">
-        <TabsList className="w-full grid grid-cols-4">
+        <TabsList className="w-full grid grid-cols-5">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="complexity">Complexity Analysis</TabsTrigger>
-          <TabsTrigger value="implementation">Implementation</TabsTrigger>
-          <TabsTrigger value="application">Real-world Application</TabsTrigger>
+          <TabsTrigger value="algorithms">Algorithms</TabsTrigger>
+          <TabsTrigger value="osrm">OSRM Integration</TabsTrigger>
+          <TabsTrigger value="complexity">Complexity</TabsTrigger>
+          <TabsTrigger value="application">Application</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>What is Dijkstra&apos;s Algorithm?</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p>
-                Dijkstra&apos;s algorithm is a graph search algorithm that
-                solves the single-source shortest path problem for a graph with
-                non-negative edge weights, producing a shortest-path tree. This
-                algorithm is often used in routing and navigation systems.
-              </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Pathfinding Algorithms</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p>
+                  Our route finder implements two fundamental pathfinding algorithms,
+                  each with unique characteristics and use cases for finding optimal
+                  routes in transportation networks.
+                </p>
 
-              <Alert>
-                <Info className="h-4 w-4" />
-                <AlertTitle>Key Insight</AlertTitle>
-                <AlertDescription>
-                  Dijkstra&apos;s algorithm uses a greedy approach, always
-                  choosing the next node with the smallest known distance from
-                  the starting point.
-                </AlertDescription>
-              </Alert>
+                <div className="space-y-3">
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <h4 className="font-semibold text-red-800 mb-1">Dijkstra's Algorithm</h4>
+                    <p className="text-sm text-red-700">
+                      Finds the shortest path by weight (travel time). Uses a priority queue
+                      to always process the node with minimum distance first.
+                    </p>
+                  </div>
+
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h4 className="font-semibold text-blue-800 mb-1">Breadth-First Search (BFS)</h4>
+                    <p className="text-sm text-blue-700">
+                      Finds the path with fewest stations. Explores all neighbors
+                      at the current depth before moving to the next level.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>OSRM Integration</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p>
+                  We've enhanced our algorithms with OSRM (Open Source Routing Machine)
+                  integration, providing realistic road-based routing instead of
+                  theoretical straight-line distances.
+                </p>
+
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertTitle>Real-World Routing</AlertTitle>
+                  <AlertDescription>
+                    OSRM provides actual road geometry, turn-by-turn instructions,
+                    and realistic travel times based on real road networks.
+                  </AlertDescription>
+                </Alert>
+
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="text-sm">GPS-accurate route coordinates</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="text-sm">Turn-by-turn navigation</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="text-sm">Realistic travel distances</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
               <div className="my-6">
                 <h3 className="text-lg font-medium mb-2">
@@ -124,6 +184,256 @@ end function`}</code>
                 <li>Road networks and traffic management</li>
                 <li>Robotics path planning</li>
               </ul>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="algorithms" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Dijkstra's Algorithm */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-red-500 rounded-full"></div>
+                  Dijkstra's Algorithm
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <h4 className="font-semibold mb-2">How it Works</h4>
+                  <ol className="list-decimal list-inside space-y-1 text-sm">
+                    <li>Initialize all distances to infinity, except start (0)</li>
+                    <li>Add start node to priority queue</li>
+                    <li>While queue not empty:</li>
+                    <li className="ml-4">• Extract node with minimum distance</li>
+                    <li className="ml-4">• Update distances to neighbors</li>
+                    <li className="ml-4">• Add updated neighbors to queue</li>
+                    <li>Stop when destination is reached</li>
+                  </ol>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold mb-2">Key Features</h4>
+                  <ul className="space-y-1 text-sm">
+                    <li>• <strong>Optimal:</strong> Always finds shortest path by weight</li>
+                    <li>• <strong>Greedy:</strong> Makes locally optimal choices</li>
+                    <li>• <strong>Priority Queue:</strong> Efficiently selects next node</li>
+                    <li>• <strong>Early Termination:</strong> Stops at destination</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold mb-2">Best For</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Finding routes with minimum travel time, considering traffic,
+                    distance, and other weighted factors.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* BFS Algorithm */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
+                  Breadth-First Search (BFS)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <h4 className="font-semibold mb-2">How it Works</h4>
+                  <ol className="list-decimal list-inside space-y-1 text-sm">
+                    <li>Initialize queue with start node</li>
+                    <li>Mark start node as visited</li>
+                    <li>While queue not empty:</li>
+                    <li className="ml-4">• Dequeue front node</li>
+                    <li className="ml-4">• Check if it's the destination</li>
+                    <li className="ml-4">• Add unvisited neighbors to queue</li>
+                    <li className="ml-4">• Mark neighbors as visited</li>
+                    <li>Continue until destination found</li>
+                  </ol>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold mb-2">Key Features</h4>
+                  <ul className="space-y-1 text-sm">
+                    <li>• <strong>Unweighted:</strong> Treats all edges equally</li>
+                    <li>• <strong>Level-by-level:</strong> Explores by distance from start</li>
+                    <li>• <strong>FIFO Queue:</strong> First in, first out processing</li>
+                    <li>• <strong>Complete:</strong> Always finds a solution if one exists</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold mb-2">Best For</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Finding routes with minimum number of transfers or stations,
+                    when all connections are considered equal.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Comparison */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Algorithm Comparison</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left p-2">Aspect</th>
+                      <th className="text-left p-2 text-red-600">Dijkstra's</th>
+                      <th className="text-left p-2 text-blue-600">BFS</th>
+                    </tr>
+                  </thead>
+                  <tbody className="space-y-1">
+                    <tr className="border-b">
+                      <td className="p-2 font-medium">Time Complexity</td>
+                      <td className="p-2">O((V + E) log V)</td>
+                      <td className="p-2">O(V + E)</td>
+                    </tr>
+                    <tr className="border-b">
+                      <td className="p-2 font-medium">Space Complexity</td>
+                      <td className="p-2">O(V)</td>
+                      <td className="p-2">O(V)</td>
+                    </tr>
+                    <tr className="border-b">
+                      <td className="p-2 font-medium">Optimizes For</td>
+                      <td className="p-2">Minimum weight (time)</td>
+                      <td className="p-2">Minimum hops (stations)</td>
+                    </tr>
+                    <tr className="border-b">
+                      <td className="p-2 font-medium">Data Structure</td>
+                      <td className="p-2">Priority Queue</td>
+                      <td className="p-2">FIFO Queue</td>
+                    </tr>
+                    <tr>
+                      <td className="p-2 font-medium">Use Case</td>
+                      <td className="p-2">Fastest route</td>
+                      <td className="p-2">Fewest transfers</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="osrm" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>OSRM Integration Overview</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p>
+                OSRM (Open Source Routing Machine) is a high-performance routing engine
+                that provides realistic road-based routing. Our integration enhances
+                traditional pathfinding algorithms with real-world road data.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <h4 className="font-semibold text-green-800 mb-2">Traditional Mode</h4>
+                  <ul className="text-sm text-green-700 space-y-1">
+                    <li>• Straight-line distances</li>
+                    <li>• Theoretical calculations</li>
+                    <li>• Fast computation</li>
+                    <li>• Educational purposes</li>
+                  </ul>
+                </div>
+
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h4 className="font-semibold text-blue-800 mb-2">OSRM Mode</h4>
+                  <ul className="text-sm text-blue-700 space-y-1">
+                    <li>• Real road geometry</li>
+                    <li>• Actual travel distances</li>
+                    <li>• Turn-by-turn instructions</li>
+                    <li>• Production-ready routing</li>
+                  </ul>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Enhanced Algorithm Integration</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p>
+                When OSRM mode is enabled, our Dijkstra's algorithm uses OSRM API calls
+                to get realistic edge weights instead of straight-line distances.
+              </p>
+
+              <div className="space-y-4">
+                <div>
+                  <h4 className="font-semibold mb-2">How It Works</h4>
+                  <ol className="list-decimal list-inside space-y-1 text-sm">
+                    <li>Algorithm requests route between two stations</li>
+                    <li>OSRM calculates realistic road-based route</li>
+                    <li>Returns actual travel time and distance</li>
+                    <li>Algorithm uses this data for edge weights</li>
+                    <li>Results cached to avoid repeated API calls</li>
+                  </ol>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold mb-2">Benefits</h4>
+                  <ul className="space-y-1 text-sm">
+                    <li>• <strong>Realistic Results:</strong> Routes follow actual roads</li>
+                    <li>• <strong>Accurate Timing:</strong> Real travel time estimates</li>
+                    <li>• <strong>Turn Instructions:</strong> Step-by-step navigation</li>
+                    <li>• <strong>Performance:</strong> Smart caching reduces API calls</li>
+                  </ul>
+                </div>
+
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertTitle>Performance Note</AlertTitle>
+                  <AlertDescription>
+                    OSRM mode has higher latency due to API calls, but provides
+                    significantly more accurate routing for real-world applications.
+                  </AlertDescription>
+                </Alert>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>OSRM Features in Action</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="text-center p-4 border rounded-lg">
+                  <div className="text-2xl font-bold text-green-600 mb-2">🗺️</div>
+                  <h4 className="font-semibold mb-1">Route Geometry</h4>
+                  <p className="text-xs text-muted-foreground">
+                    GPS coordinates following actual road networks
+                  </p>
+                </div>
+
+                <div className="text-center p-4 border rounded-lg">
+                  <div className="text-2xl font-bold text-blue-600 mb-2">🧭</div>
+                  <h4 className="font-semibold mb-1">Turn Instructions</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Step-by-step navigation directions
+                  </p>
+                </div>
+
+                <div className="text-center p-4 border rounded-lg">
+                  <div className="text-2xl font-bold text-purple-600 mb-2">⏱️</div>
+                  <h4 className="font-semibold mb-1">Realistic Timing</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Accurate travel time based on road conditions
+                  </p>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -423,31 +733,57 @@ end function`}</code>
         <TabsContent value="application" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>TransJakarta Application</CardTitle>
+              <CardTitle>Real-World Transportation Application</CardTitle>
             </CardHeader>
             <CardContent>
               <p>
-                For our TransJakarta route finder, we&apos;ve applied
-                Dijkstra&apos;s algorithm to find the most cost-efficient bus
-                routes. Here&apos;s how the algorithm is applied in this
-                context:
+                Our route finder demonstrates practical applications of pathfinding
+                algorithms in public transportation, enhanced with real-world routing
+                capabilities through OSRM integration.
               </p>
 
               <div className="mt-4 space-y-4">
                 <div>
-                  <h3 className="text-lg font-medium">Graph Representation</h3>
+                  <h3 className="text-lg font-medium">Multi-Modal Graph Representation</h3>
                   <ul className="list-disc list-inside mt-2 space-y-1">
                     <li>
-                      <strong>Nodes:</strong> TransJakarta stations with
-                      geographical coordinates
+                      <strong>Nodes:</strong> Stations from TransJakarta, MRT, LRT, KRL, and JakLingko
                     </li>
                     <li>
-                      <strong>Edges:</strong> Bus routes between stations
+                      <strong>Edges:</strong> Direct connections between stations
                     </li>
                     <li>
-                      <strong>Weights:</strong> Estimated travel time in minutes
+                      <strong>Weights:</strong> Travel time (traditional) or OSRM-calculated distances
+                    </li>
+                    <li>
+                      <strong>Attributes:</strong> Transport mode, corridor info, station types
                     </li>
                   </ul>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-medium">Routing Modes</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                    <div className="p-3 border rounded-lg">
+                      <h4 className="font-semibold text-blue-600 mb-2">Straight-Line Mode</h4>
+                      <ul className="text-sm space-y-1">
+                        <li>• Theoretical shortest path</li>
+                        <li>• Fast computation</li>
+                        <li>• Educational demonstration</li>
+                        <li>• Algorithm comparison</li>
+                      </ul>
+                    </div>
+
+                    <div className="p-3 border rounded-lg">
+                      <h4 className="font-semibold text-green-600 mb-2">OSRM Realistic Mode</h4>
+                      <ul className="text-sm space-y-1">
+                        <li>• Real road-based routing</li>
+                        <li>• Accurate travel times</li>
+                        <li>• Turn-by-turn instructions</li>
+                        <li>• Production-ready results</li>
+                      </ul>
+                    </div>
+                  </div>
                 </div>
 
                 <div>
@@ -562,22 +898,49 @@ end function`}</code>
               </div>
 
               <div className="mt-6">
-                <h3 className="text-lg font-medium">Future Enhancements</h3>
-                <p className="mt-1">
-                  Potential improvements to our TransJakarta route finder
-                  include:
+                <h3 className="text-lg font-medium">Current Features & Future Enhancements</h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <h4 className="font-semibold text-green-600 mb-2">✅ Currently Available</h4>
+                    <ul className="text-sm space-y-1">
+                      <li>• OSRM realistic road routing</li>
+                      <li>• Multi-modal transport integration</li>
+                      <li>• Algorithm comparison tools</li>
+                      <li>• Interactive visualization</li>
+                      <li>• Turn-by-turn navigation</li>
+                      <li>• Performance metrics analysis</li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold text-blue-600 mb-2">🚀 Future Enhancements</h4>
+                    <ul className="text-sm space-y-1">
+                      <li>• Real-time traffic integration</li>
+                      <li>• Live public transport data</li>
+                      <li>• Walking route optimization</li>
+                      <li>• Multiple routing profiles</li>
+                      <li>• Accessibility options</li>
+                      <li>• Route alternatives</li>
+                      <li>• Offline routing support</li>
+                      <li>• Custom user preferences</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-green-50 border rounded-lg">
+                <h3 className="text-lg font-medium mb-2">Try It Now!</h3>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Experience the difference between theoretical algorithms and real-world routing:
                 </p>
-                <ul className="list-disc list-inside mt-2 space-y-1">
-                  <li>Integration with real-time TransJakarta bus data</li>
-                  <li>Incorporation of traffic conditions and delays</li>
-                  <li>
-                    Support for multi-modal routing (bus + train + walking)
-                  </li>
-                  <li>User preferences for route optimization</li>
-                  <li>
-                    Accessibility options for passengers with mobility needs
-                  </li>
-                </ul>
+                <div className="space-y-2 text-sm">
+                  <div>1. Go to <strong>Route Finder</strong> in the navigation</div>
+                  <div>2. Select start and end stations</div>
+                  <div>3. Choose between <strong>Straight Line</strong> and <strong>Realistic Roads (OSRM)</strong></div>
+                  <div>4. Compare algorithm results with real routing data</div>
+                  <div>5. Explore the <strong>Algorithm Visualization</strong> tab for detailed analysis</div>
+                </div>
               </div>
             </CardContent>
           </Card>

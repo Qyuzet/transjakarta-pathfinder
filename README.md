@@ -21,6 +21,8 @@ TransJakarta Pathfinder is an educational platform that demonstrates and compare
 - **Step-by-Step Visualization**: Watch algorithms explore the network node by node
 - **Detailed Performance Metrics**: Analyze execution time, memory usage, and efficiency
 - **Graph View**: Visualize the network as a graph with nodes, edges, and weights
+- **OSRM Realistic Routing**: Toggle between straight-line and realistic road-based routing using OSRM API
+- **Turn-by-Turn Navigation**: Get detailed driving instructions for realistic routes
 - **Educational Documentation**: Learn about algorithm theory and implementation
 
 ## Algorithms Implemented
@@ -58,6 +60,30 @@ Key characteristics:
 - Explores all nodes at the current level before moving to the next
 - Simpler implementation than Dijkstra's algorithm
 - Explores more nodes unnecessarily in weighted graphs
+
+## OSRM Realistic Routing
+
+The application now supports two routing modes:
+
+### Straight-Line Mode (Original)
+- Uses direct geographic distance between stations
+- Simple calculation: 2 minutes per km + 1 minute for station stop
+- Fast computation with no external API calls
+- Good for algorithm demonstration and educational purposes
+- Not realistic for actual travel planning
+
+### OSRM Realistic Mode (New)
+- Uses the Open Source Routing Machine (OSRM) API
+- Provides actual road-based routing like Google Maps
+- Real driving routes with accurate travel times
+- Turn-by-turn navigation instructions
+- More realistic for practical route planning
+- Demonstrates real-world application of pathfinding algorithms
+
+**Toggle Feature**: Users can switch between modes to compare:
+- How algorithms perform with different distance calculations
+- The difference between theoretical and practical routing
+- Educational value of seeing both approaches
 
 ## Algorithm Comparison
 

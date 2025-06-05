@@ -36,6 +36,8 @@ type GraphVisualizationProps = {
   graph: Graph;
   currentStepIndex: number;
   algorithmName?: "dijkstra" | "bfs";
+  osrmData?: Map<string, any> | null;
+  routingMode?: "straight-line" | "osrm-realistic";
 };
 
 export function GraphVisualization({
@@ -44,6 +46,8 @@ export function GraphVisualization({
   graph,
   currentStepIndex,
   algorithmName = "dijkstra",
+  osrmData = null,
+  routingMode = "straight-line",
 }: GraphVisualizationProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
@@ -241,12 +245,24 @@ export function GraphVisualization({
       .enter()
       .append("text")
       .attr("class", "edge-weight")
-      .text((d) => d.weight)
+      .text((d) => {
+        // Show OSRM weight if available and in OSRM mode
+        if (routingMode === "osrm-realistic" && osrmData) {
+          const cacheKey = `${d.source}-${d.target}`;
+          const reverseCacheKey = `${d.target}-${d.source}`;
+          const osrmRoute = osrmData.get(cacheKey) || osrmData.get(reverseCacheKey);
+          if (osrmRoute) {
+            const osrmWeight = (osrmRoute.duration / 60).toFixed(1);
+            return `${osrmWeight}m (OSRM)`;
+          }
+        }
+        return `${d.weight}m`;
+      })
       .attr("text-anchor", "middle")
       .attr("dominant-baseline", "middle")
-      .attr("font-size", "10px")
-      .attr("fill", "currentColor")
-      .attr("opacity", 0.7);
+      .attr("font-size", "9px")
+      .attr("fill", routingMode === "osrm-realistic" ? "#059669" : "currentColor")
+      .attr("opacity", 0.8);
 
     // Create the nodes
     const nodes = svg
@@ -473,12 +489,12 @@ export function GraphVisualization({
                     style={{
                       backgroundColor:
                         (node.corridor &&
-                          edgesCopy.find((e) => e.corridor === node.corridor)
+                          visualizationEdges.find((e) => e.corridor === node.corridor)
                             ?.color + "20") ||
                         "#6366f120",
                       color:
                         (node.corridor &&
-                          edgesCopy.find((e) => e.corridor === node.corridor)
+                          visualizationEdges.find((e) => e.corridor === node.corridor)
                             ?.color) ||
                         "#6366f1",
                     }}

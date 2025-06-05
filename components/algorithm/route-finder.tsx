@@ -11,12 +11,14 @@ import {
   lrtGraph,
   getTransportModeColor,
 } from "@/lib/data/combined-transport";
-import { Node } from "@/lib/utils";
+import { Node, RoutingMode } from "@/lib/utils";
+import { enhancedRoutingService } from "@/lib/enhanced-routing";
 import {
   dijkstra,
   DijkstraResult,
   getAlgorithmMetrics as getDijkstraMetrics,
 } from "@/lib/dijkstra";
+import { enhancedDijkstra } from "@/lib/enhanced-dijkstra";
 import {
   bfs,
   BFSResult,
@@ -39,7 +41,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { SearchIcon, Navigation, Clock, BarChart } from "lucide-react";
+import { SearchIcon, Navigation, Clock, BarChart, Route, MapPin } from "lucide-react";
 import { AnimatedAlgorithmSteps } from "@/components/algorithm/visualization";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
@@ -91,6 +93,9 @@ export function RouteFinder() {
   const [selectedTransportModes, setSelectedTransportModes] = useState<
     string[]
   >(["transjakarta"]);
+  const [routingMode, setRoutingMode] = useState<RoutingMode>("straight-line");
+  const [routeSegments, setRouteSegments] = useState<any[]>([]);
+  const [routeMetrics, setRouteMetrics] = useState<any>(null);
 
   // Only render after component is mounted on client
   useEffect(() => {
@@ -105,21 +110,83 @@ export function RouteFinder() {
     return combinedTransportGraph.nodes.find((node) => node.id === nodeId);
   };
 
-  const handleFindRoute = () => {
+  // Helper function to get OSRM-based route details
+  const getOSRMRouteDetails = (algorithmResult: any) => {
+    if (!algorithmResult.osrmRouteData || !algorithmResult.path) return null;
+
+    const osrmData = algorithmResult.osrmRouteData;
+    const path = algorithmResult.path;
+
+    // Calculate total OSRM metrics
+    let totalDuration = 0;
+    let totalDistance = 0;
+    let allInstructions: string[] = [];
+    let totalRoadPoints = 0;
+
+    // Aggregate data from all OSRM route segments
+    for (const [key, routeData] of osrmData.entries()) {
+      totalDuration += routeData.duration / 60; // Convert to minutes
+      totalDistance += routeData.distance / 1000; // Convert to km
+      totalRoadPoints += routeData.geometry?.length || 0;
+
+      // Extract instructions
+      if (routeData.steps) {
+        const instructions = routeData.steps.map((step: any) =>
+          step.maneuver?.instruction ||
+          step.instruction ||
+          step.name ||
+          `${step.maneuver?.type || 'continue'} ${step.maneuver?.modifier ? 'and ' + step.maneuver.modifier : ''}`.trim()
+        ).filter(Boolean);
+        allInstructions.push(...instructions);
+      }
+    }
+
+    return {
+      totalStations: path.length,
+      stationNames: path.map((id: string) => getNodeById(id)?.name || id),
+      totalTimeMinutes: totalDuration,
+      startStation: getNodeById(path[0]),
+      endStation: getNodeById(path[path.length - 1]),
+      isComparison: false,
+      // OSRM-specific data
+      osrmData: {
+        totalDuration,
+        totalDistance,
+        totalRoadPoints,
+        allInstructions,
+        segmentCount: osrmData.size,
+        algorithmDistance: algorithmResult.distance
+      }
+    };
+  };
+
+  const handleFindRoute = async () => {
     if (!startNodeId || !endNodeId) return;
+
+    console.clear();
+    console.log("🚀 STARTING ROUTE CALCULATION");
+    console.log("Start Node ID:", startNodeId);
+    console.log("End Node ID:", endNodeId);
+    console.log("Algorithm:", selectedAlgorithm);
+    console.log("Routing Mode:", routingMode);
 
     setIsCalculating(true);
     setComparisonResult(null);
+    setRouteSegments([]);
+    setRouteMetrics(null);
 
     // Small timeout to allow UI to update and show loading state
-    setTimeout(() => {
+    setTimeout(async () => {
       if (selectedAlgorithm === "compare") {
         // Run both algorithms and compare results
-        const dijkstraResult = dijkstra(
-          combinedTransportGraph,
-          startNodeId,
-          endNodeId
-        );
+        let dijkstraResult;
+        if (routingMode === "osrm-realistic") {
+          console.log("🔄 Using Enhanced Dijkstra with OSRM weights for comparison");
+          dijkstraResult = await enhancedDijkstra(combinedTransportGraph, startNodeId, endNodeId, true);
+        } else {
+          console.log("🔄 Using Standard Dijkstra with straight-line weights for comparison");
+          dijkstraResult = dijkstra(combinedTransportGraph, startNodeId, endNodeId);
+        }
         const bfsResult = bfs(combinedTransportGraph, startNodeId, endNodeId);
 
         // Calculate comparison metrics
@@ -176,16 +243,69 @@ export function RouteFinder() {
 
         setComparisonResult(comparison);
         setResult(null); // Clear single algorithm result
+
+        // Get enhanced routing for comparison mode (use Dijkstra path)
+        try {
+          console.log("Getting enhanced routing for comparison mode, mode:", routingMode);
+          console.log("Dijkstra path:", comparison.dijkstra.path);
+
+          const segments = await enhancedRoutingService.getRouteSegments(
+            comparison.dijkstra.path,
+            combinedTransportGraph
+          );
+          const metrics = await enhancedRoutingService.getRouteMetrics(
+            comparison.dijkstra.path,
+            combinedTransportGraph
+          );
+
+          console.log("Enhanced routing segments (comparison):", segments);
+          console.log("Enhanced routing metrics (comparison):", metrics);
+
+          setRouteSegments(segments);
+          setRouteMetrics(metrics);
+        } catch (error) {
+          console.error("Error getting enhanced routing:", error);
+        }
       } else {
         // Run single algorithm
         let result;
         if (selectedAlgorithm === "dijkstra") {
-          result = dijkstra(combinedTransportGraph, startNodeId, endNodeId);
+          // Use enhanced dijkstra if OSRM mode is enabled
+          if (routingMode === "osrm-realistic") {
+            console.log("🔄 Using Enhanced Dijkstra with OSRM weights");
+            result = await enhancedDijkstra(combinedTransportGraph, startNodeId, endNodeId, true);
+          } else {
+            console.log("🔄 Using Standard Dijkstra with straight-line weights");
+            result = dijkstra(combinedTransportGraph, startNodeId, endNodeId);
+          }
         } else {
           result = bfs(combinedTransportGraph, startNodeId, endNodeId);
         }
         setResult(result);
         setComparisonResult(null); // Clear comparison result
+
+        // Get enhanced routing for single algorithm
+        try {
+          console.log("Getting enhanced routing for single algorithm, mode:", routingMode);
+          console.log("Path:", result.path);
+
+          const segments = await enhancedRoutingService.getRouteSegments(
+            result.path,
+            combinedTransportGraph
+          );
+          const metrics = await enhancedRoutingService.getRouteMetrics(
+            result.path,
+            combinedTransportGraph
+          );
+
+          console.log("Enhanced routing segments:", segments);
+          console.log("Enhanced routing metrics:", metrics);
+
+          setRouteSegments(segments);
+          setRouteMetrics(metrics);
+        } catch (error) {
+          console.error("Error getting enhanced routing:", error);
+        }
       }
       setIsCalculating(false);
     }, 500);
@@ -195,6 +315,12 @@ export function RouteFinder() {
 
   const getRouteDetails = () => {
     if (result && result.path.length) {
+      // Use OSRM data if available and in OSRM mode
+      if (routingMode === "osrm-realistic" && (result as any).osrmRouteData) {
+        return getOSRMRouteDetails(result);
+      }
+
+      // Fallback to standard route details
       const totalStations = result.path.length;
       const stationNames = result.path.map((id) => getNodeById(id)?.name || id);
       const totalTimeMinutes = result.distance;
@@ -282,7 +408,7 @@ export function RouteFinder() {
       {/* Main layout with integrated controls */}
       <div className="flex flex-col gap-4 h-[calc(100vh-150px)]">
         {/* Controls in a horizontal layout */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-muted/20 p-3 rounded-md relative">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-3 bg-muted/20 p-3 rounded-md relative">
           <div className="space-y-1">
             <label className="text-sm font-medium">Start Station</label>
             <div className="relative">
@@ -356,6 +482,43 @@ export function RouteFinder() {
             </div>
           </div>
 
+          <div className="space-y-1">
+            <label className="text-sm font-medium">Routing Mode</label>
+            <div className="relative">
+              <Select
+                value={routingMode}
+                onValueChange={(value: RoutingMode) => {
+                  setRoutingMode(value);
+                  enhancedRoutingService.setRoutingMode(value);
+                }}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Select routing mode" />
+                </SelectTrigger>
+                <SelectContent
+                  className="z-[1000]"
+                  position="popper"
+                  sideOffset={5}
+                  avoidCollisions={false}
+                  side="bottom"
+                >
+                  <SelectItem value="straight-line">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      <span>Straight Line (Current)</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="osrm-realistic">
+                    <div className="flex items-center gap-2">
+                      <Route className="h-4 w-4" />
+                      <span>Realistic Roads (OSRM)</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           <div className="flex items-end">
             <Button
               onClick={handleFindRoute}
@@ -388,6 +551,19 @@ export function RouteFinder() {
                       : selectedAlgorithm === "dijkstra"
                       ? "Fastest route by travel time"
                       : "Route with fewest stations"}
+                    <div className="flex items-center gap-1 mt-1">
+                      {routingMode === "osrm-realistic" ? (
+                        <>
+                          <Route className="h-3 w-3 text-green-600" />
+                          <span className="text-green-600">Realistic Roads</span>
+                        </>
+                      ) : (
+                        <>
+                          <MapPin className="h-3 w-3 text-blue-600" />
+                          <span className="text-blue-600">Straight Line</span>
+                        </>
+                      )}
+                    </div>
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3 pt-0">
@@ -538,9 +714,66 @@ export function RouteFinder() {
                           <p className="text-xs font-medium">Travel Time</p>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          {routeDetails.totalTimeMinutes} minutes
+                          {routeDetails.totalTimeMinutes.toFixed(1)} minutes
+                          {routeDetails.osrmData && (
+                            <span className="ml-1 text-green-600">(OSRM)</span>
+                          )}
                         </p>
                       </div>
+
+                      {/* OSRM-specific details */}
+                      {routeDetails.osrmData && (
+                        <>
+                          <div className="p-2 bg-green-50 rounded-md">
+                            <div className="flex items-center gap-1 mb-1">
+                              <Route className="h-4 w-4 text-green-600" />
+                              <p className="text-xs font-medium text-green-600">OSRM Route Data</p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div>
+                                <p className="text-muted-foreground">Distance:</p>
+                                <p className="font-medium">{routeDetails.osrmData.totalDistance.toFixed(2)} km</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground">Road Points:</p>
+                                <p className="font-medium text-green-600">{routeDetails.osrmData.totalRoadPoints}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground">Instructions:</p>
+                                <p className="font-medium">{routeDetails.osrmData.allInstructions.length}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground">Segments:</p>
+                                <p className="font-medium">{routeDetails.osrmData.segmentCount}</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Turn-by-Turn Instructions in Route Details */}
+                          {routeDetails.osrmData.allInstructions.length > 0 && (
+                            <div className="p-2 bg-blue-50 rounded-md">
+                              <div className="flex items-center gap-1 mb-1">
+                                <Navigation className="h-4 w-4 text-blue-600" />
+                                <p className="text-xs font-medium text-blue-600">Turn Instructions</p>
+                              </div>
+                              <div className="max-h-24 overflow-y-auto">
+                                <ol className="list-decimal list-inside space-y-1">
+                                  {routeDetails.osrmData.allInstructions.slice(0, 5).map((instruction: string, index: number) => (
+                                    <li key={index} className="text-xs text-muted-foreground">
+                                      {instruction}
+                                    </li>
+                                  ))}
+                                  {routeDetails.osrmData.allInstructions.length > 5 && (
+                                    <li className="text-xs text-muted-foreground italic">
+                                      ... and {routeDetails.osrmData.allInstructions.length - 5} more instructions
+                                    </li>
+                                  )}
+                                </ol>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )}
 
                       <div className="p-2 bg-muted/40 rounded-md">
                         <div className="flex items-center gap-1 mb-1">
@@ -596,6 +829,9 @@ export function RouteFinder() {
                       comparisonMode={!!comparisonResult}
                       dijkstraPath={comparisonResult?.dijkstra.path || []}
                       bfsPath={comparisonResult?.bfs.path || []}
+                      routingMode={routingMode}
+                      routeSegments={routeSegments}
+                      routeMetrics={routeMetrics}
                     />
                   </div>
                 </TabsContent>
@@ -621,6 +857,8 @@ export function RouteFinder() {
                                 path={comparisonResult.dijkstra.path}
                                 graph={transjakartaGraph}
                                 algorithmName="dijkstra"
+                                osrmData={(comparisonResult.dijkstra as any).osrmRouteData}
+                                routingMode={routingMode}
                               />
                             </div>
 
@@ -640,7 +878,98 @@ export function RouteFinder() {
                           </div>
                         </div>
 
-                        {/* Import and use the comparison component */}
+                        {/* OSRM Routing Information for Comparison */}
+                        {routingMode === "osrm-realistic" && routeSegments && routeSegments.length > 0 && (
+                          <div className="mb-6 border-t pt-6">
+                            <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
+                              <Route className="h-4 w-4 text-green-600" />
+                              <span className="text-green-600">OSRM Realistic Routing (Dijkstra Path)</span>
+                            </h3>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                              {/* Route Metrics */}
+                              <Card>
+                                <CardHeader className="pb-2">
+                                  <CardTitle className="text-sm">Route Metrics</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-2">
+                                  {routeMetrics && (
+                                    <>
+                                      <div className="flex justify-between text-sm">
+                                        <span>Duration:</span>
+                                        <span className="font-medium">{routeMetrics.totalDuration.toFixed(1)} min</span>
+                                      </div>
+                                      <div className="flex justify-between text-sm">
+                                        <span>Distance:</span>
+                                        <span className="font-medium">{routeMetrics.totalDistance.toFixed(2)} km</span>
+                                      </div>
+                                      <div className="flex justify-between text-sm">
+                                        <span>Segments:</span>
+                                        <span className="font-medium">{routeMetrics.segmentCount}</span>
+                                      </div>
+                                    </>
+                                  )}
+                                </CardContent>
+                              </Card>
+
+                              {/* Route Segments */}
+                              <Card>
+                                <CardHeader className="pb-2">
+                                  <CardTitle className="text-sm">Route Segments</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                  <div className="space-y-1 max-h-24 overflow-y-auto">
+                                    {routeSegments.slice(0, 3).map((segment, index) => (
+                                      <div key={index} className="p-1 bg-muted/50 rounded text-xs">
+                                        <div className="font-medium truncate">{segment.routeInfo.name}</div>
+                                        <div className="text-muted-foreground">
+                                          {segment.duration.toFixed(1)}min • {segment.distance.toFixed(1)}km
+                                        </div>
+                                      </div>
+                                    ))}
+                                    {routeSegments.length > 3 && (
+                                      <div className="text-xs text-muted-foreground text-center">
+                                        +{routeSegments.length - 3} more segments
+                                      </div>
+                                    )}
+                                  </div>
+                                </CardContent>
+                              </Card>
+
+                              {/* Instructions Summary */}
+                              <Card>
+                                <CardHeader className="pb-2">
+                                  <CardTitle className="text-sm">Navigation</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                  <div className="space-y-1 text-xs">
+                                    <div className="flex justify-between">
+                                      <span>Total Instructions:</span>
+                                      <span className="font-medium">
+                                        {routeSegments.reduce((total, segment) =>
+                                          total + (segment.instructions?.length || 0), 0
+                                        )}
+                                      </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span>Road Points:</span>
+                                      <span className="font-medium text-green-600">
+                                        {routeSegments.reduce((total, segment) =>
+                                          total + segment.coordinates.length, 0
+                                        )}
+                                      </span>
+                                    </div>
+                                    <div className="text-muted-foreground">
+                                      Real road geometry vs straight lines
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Algorithm Performance Comparison */}
                         <div className="mt-4">
                           <AlgorithmComparison
                             dijkstra={comparisonResult.dijkstra}
@@ -672,14 +1001,281 @@ export function RouteFinder() {
                       </div>
                     ) : result ? (
                       // Show single algorithm visualization
-                      <div className="p-4">
-                        <AnimatedAlgorithmSteps
-                          steps={result.steps}
-                          path={result.path}
-                          graph={transjakartaGraph}
-                          algorithmName={selectedAlgorithm}
-                        />
-                        <AlgorithmMetrics result={result} />
+                      <div className="p-4 space-y-6">
+                        {/* Algorithm Steps Visualization */}
+                        <div>
+                          <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
+                            <span className="w-3 h-3 rounded-full bg-primary"></span>
+                            {selectedAlgorithm === "dijkstra" ? "Dijkstra's Algorithm" : "Breadth-First Search"} Steps
+                          </h3>
+                          <AnimatedAlgorithmSteps
+                            steps={result.steps}
+                            path={result.path}
+                            graph={transjakartaGraph}
+                            algorithmName={selectedAlgorithm}
+                            osrmData={(result as any).osrmRouteData}
+                            routingMode={routingMode}
+                          />
+                        </div>
+
+                        {/* OSRM Routing Information */}
+                        {routingMode === "osrm-realistic" && (routeSegments?.length > 0 || (result as any).osrmRouteData) && (
+                          <div className="border-t pt-6">
+                            <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
+                              <Route className="h-4 w-4 text-green-600" />
+                              <span className="text-green-600">OSRM Realistic Routing</span>
+                            </h3>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                              {/* Route Metrics */}
+                              <Card>
+                                <CardHeader className="pb-2">
+                                  <CardTitle className="text-sm">Route Metrics</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-2">
+                                  {routeMetrics && (
+                                    <>
+                                      <div className="flex justify-between text-sm">
+                                        <span>Total Duration:</span>
+                                        <span className="font-medium">{routeMetrics.totalDuration.toFixed(1)} min</span>
+                                      </div>
+                                      <div className="flex justify-between text-sm">
+                                        <span>Total Distance:</span>
+                                        <span className="font-medium">{routeMetrics.totalDistance.toFixed(2)} km</span>
+                                      </div>
+                                      <div className="flex justify-between text-sm">
+                                        <span>Route Segments:</span>
+                                        <span className="font-medium">{routeMetrics.segmentCount}</span>
+                                      </div>
+                                      <div className="flex justify-between text-sm">
+                                        <span>Routing Mode:</span>
+                                        <span className="font-medium text-green-600">Realistic Roads</span>
+                                      </div>
+                                    </>
+                                  )}
+                                </CardContent>
+                              </Card>
+
+                              {/* Route Segments */}
+                              <Card>
+                                <CardHeader className="pb-2">
+                                  <CardTitle className="text-sm">Route Segments</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                                    {routeSegments.map((segment, index) => (
+                                      <div key={index} className="p-2 bg-muted/50 rounded text-xs">
+                                        <div className="font-medium">{segment.routeInfo.name}</div>
+                                        <div className="text-muted-foreground">
+                                          {segment.duration.toFixed(1)}min • {segment.distance.toFixed(2)}km
+                                          {segment.coordinates.length > 2 && (
+                                            <span className="ml-2 text-green-600">
+                                              • {segment.coordinates.length} road points
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            </div>
+
+                            {/* Turn-by-Turn Instructions */}
+                            <Card>
+                              <CardHeader className="pb-2">
+                                <CardTitle className="text-sm">Turn-by-Turn Instructions</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="space-y-3 max-h-48 overflow-y-auto">
+                                  {(() => {
+                                    console.log("🔍 Checking instructions for segments:", routeSegments.map(s => ({
+                                      name: s.routeInfo.name,
+                                      hasInstructions: !!s.instructions,
+                                      instructionCount: s.instructions?.length || 0,
+                                      instructions: s.instructions
+                                    })));
+
+                                    const segmentsWithInstructions = routeSegments.filter(s => s.instructions && s.instructions.length > 0);
+
+                                    if (segmentsWithInstructions.length === 0) {
+                                      return (
+                                        <div className="text-center py-4">
+                                          <div className="text-sm text-muted-foreground mb-2">
+                                            No detailed turn instructions available
+                                          </div>
+                                          <div className="text-xs text-muted-foreground">
+                                            OSRM may not have provided step-by-step directions for this route
+                                          </div>
+                                          <div className="mt-3 p-3 bg-muted/50 rounded text-xs">
+                                            <div className="font-medium mb-2">Route Summary:</div>
+                                            {routeSegments.map((segment, index) => (
+                                              <div key={index} className="mb-2 p-2 bg-background rounded border-l-2 border-green-500">
+                                                <div className="font-medium text-green-600">
+                                                  {index + 1}. {segment.routeInfo.name}
+                                                </div>
+                                                <div className="text-muted-foreground mt-1">
+                                                  Duration: {segment.duration.toFixed(1)} minutes
+                                                </div>
+                                                <div className="text-muted-foreground">
+                                                  Distance: {segment.distance.toFixed(2)} km
+                                                </div>
+                                                <div className="text-muted-foreground">
+                                                  Road points: {segment.coordinates.length} GPS coordinates
+                                                </div>
+                                              </div>
+                                            ))}
+                                            <div className="mt-2 text-xs text-muted-foreground italic">
+                                              💡 Tip: OSRM provided route geometry but no detailed turn instructions for this route.
+                                            </div>
+                                          </div>
+                                        </div>
+                                      );
+                                    }
+
+                                    return segmentsWithInstructions.map((segment, segmentIndex) => (
+                                      <div key={segmentIndex} className="border-l-2 border-green-500 pl-3">
+                                        <h4 className="text-sm font-medium text-green-600 mb-1">
+                                          {segment.routeInfo.name}
+                                        </h4>
+                                        <ol className="list-decimal list-inside space-y-1">
+                                          {segment.instructions.map((instruction, index) => (
+                                            <li key={index} className="text-xs text-foreground">
+                                              {instruction}
+                                            </li>
+                                          ))}
+                                        </ol>
+                                      </div>
+                                    ));
+                                  })()}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </div>
+                        )}
+
+                        {/* Algorithm Performance Metrics */}
+                        <div className="border-t pt-6">
+                          <h3 className="text-lg font-medium mb-4">Algorithm Performance</h3>
+
+                          {/* Enhanced metrics with OSRM data */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            {/* Algorithm Metrics */}
+                            <Card>
+                              <CardHeader className="pb-2">
+                                <CardTitle className="text-sm">Algorithm Metrics</CardTitle>
+                              </CardHeader>
+                              <CardContent className="space-y-2">
+                                <div className="flex justify-between text-sm">
+                                  <span>Execution Time:</span>
+                                  <span className="font-medium">{result.executionTimeMs.toFixed(2)} ms</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span>Nodes Explored:</span>
+                                  <span className="font-medium">{result.nodesExplored}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span>Path Length:</span>
+                                  <span className="font-medium">{result.path.length} stations</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span>Algorithm Distance:</span>
+                                  <span className="font-medium">{result.distance.toFixed(1)} min</span>
+                                </div>
+                                {selectedAlgorithm === "dijkstra" && (
+                                  <>
+                                    <div className="flex justify-between text-sm">
+                                      <span>Priority Queue Ops:</span>
+                                      <span className="font-medium">{(result as any).priorityQueueOperations}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                      <span>Edges Processed:</span>
+                                      <span className="font-medium">{(result as any).edgesProcessed}</span>
+                                    </div>
+                                    {routingMode === "osrm-realistic" && (result as any).osrmCallsCount !== undefined && (
+                                      <>
+                                        <div className="flex justify-between text-sm">
+                                          <span>OSRM API Calls:</span>
+                                          <span className="font-medium text-green-600">{(result as any).osrmCallsCount}</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm">
+                                          <span>OSRM Cache Size:</span>
+                                          <span className="font-medium text-green-600">{(result as any).osrmCacheSize}</span>
+                                        </div>
+                                      </>
+                                    )}
+                                  </>
+                                )}
+                                {selectedAlgorithm === "bfs" && (
+                                  <div className="flex justify-between text-sm">
+                                    <span>Queue Operations:</span>
+                                    <span className="font-medium">{(result as any).queueOperations}</span>
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+
+                            {/* OSRM vs Algorithm Comparison */}
+                            {routingMode === "osrm-realistic" && routeMetrics && (
+                              <Card>
+                                <CardHeader className="pb-2">
+                                  <CardTitle className="text-sm">Routing Comparison</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-2">
+                                  <div className="text-xs font-medium mb-2 text-green-600">
+                                    {routingMode === "osrm-realistic" ? "OSRM Route vs Algorithm (using OSRM weights):" : "OSRM Route vs Algorithm:"}
+                                  </div>
+                                  <div className="flex justify-between text-sm">
+                                    <span>OSRM Route Duration:</span>
+                                    <span className="font-medium text-green-600">{routeMetrics.totalDuration.toFixed(1)} min</span>
+                                  </div>
+                                  <div className="flex justify-between text-sm">
+                                    <span>Algorithm Result:</span>
+                                    <span className="font-medium text-blue-600">{result.distance.toFixed(1)} min</span>
+                                  </div>
+                                  <div className="flex justify-between text-sm">
+                                    <span>Difference:</span>
+                                    <span className="font-medium">
+                                      {Math.abs(routeMetrics.totalDuration - result.distance).toFixed(1)} min
+                                    </span>
+                                  </div>
+                                  {routingMode === "osrm-realistic" && (
+                                    <div className="text-xs text-green-600 mt-1 p-2 bg-green-50 rounded">
+                                      ✅ Algorithm now uses OSRM weights - results should be very similar!
+                                    </div>
+                                  )}
+                                  <div className="flex justify-between text-sm">
+                                    <span>OSRM Distance:</span>
+                                    <span className="font-medium text-green-600">{routeMetrics.totalDistance.toFixed(2)} km</span>
+                                  </div>
+                                  <div className="flex justify-between text-sm">
+                                    <span>OSRM Road Points:</span>
+                                    <span className="font-medium text-green-600">
+                                      {routeSegments.reduce((total, segment) => total + segment.coordinates.length, 0)}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between text-sm">
+                                    <span>Algorithm Nodes:</span>
+                                    <span className="font-medium text-blue-600">{result.nodesExplored}</span>
+                                  </div>
+                                  <div className="flex justify-between text-sm">
+                                    <span>Routing Type:</span>
+                                    <span className="font-medium text-green-600">Real Roads</span>
+                                  </div>
+                                  <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted/30 rounded">
+                                    <strong>Note:</strong> OSRM road points are GPS coordinates along actual roads.
+                                    Algorithm nodes are transit stations explored during pathfinding.
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            )}
+                          </div>
+
+                          {/* Original Algorithm Metrics Component */}
+                          <div className="mt-4">
+                            <AlgorithmMetrics result={result} />
+                          </div>
+                        </div>
                       </div>
                     ) : (
                       // Show empty state

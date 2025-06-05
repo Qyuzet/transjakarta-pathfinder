@@ -13,17 +13,20 @@ export function Navbar() {
     {
       href: "/",
       label: "Route Finder",
-      active: pathname === "/"
+      active: pathname === "/",
+      description: "Find optimal routes with OSRM integration"
     },
     {
       href: "/algorithm",
       label: "Algorithm Analysis",
-      active: pathname === "/algorithm"
+      active: pathname === "/algorithm",
+      description: "Deep dive into pathfinding algorithms"
     },
     {
       href: "/documentation",
       label: "Documentation",
-      active: pathname === "/documentation"
+      active: pathname === "/documentation",
+      description: "Complete guide and API reference"
     },
   ]
 
